@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.next/
+.DS_Store
+*.log
+coverage/
+
+# Keep migrations tracked (needed for Railway deploy)
+# api/prisma/migrations/ is intentionally NOT ignored
