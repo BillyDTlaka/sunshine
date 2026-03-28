@@ -302,67 +302,112 @@ export class MasterDataService {
 
   // ─── Bulk Import ──────────────────────────────────────────────────────────
 
-  // Generic aliases shared across all entities
-  private static readonly GENERIC_ALIASES: Record<string, string> = {
-    'code': 'code', 'name': 'name', 'description': 'description',
-    'category': 'category', 'notes': 'notes', 'status': 'status', 'type': 'type',
-    'registration number': 'registrationNumber', 'registration no': 'registrationNumber',
-    'registrationnumber': 'registrationNumber', 'reg number': 'registrationNumber', 'reg no': 'registrationNumber',
-    'vat number': 'vatNumber', 'vat no': 'vatNumber', 'vatnumber': 'vatNumber',
-    'tax code': 'taxCode', 'taxcode': 'taxCode',
-    'unit': 'unitOfMeasure', 'unit of measure': 'unitOfMeasure', 'uom': 'unitOfMeasure', 'unitofmeasure': 'unitOfMeasure',
-  }
+  private getAliases(entity: string): Record<string, string> {
+    const generic: Record<string, string> = {}
+    generic['code'] = 'code'
+    generic['name'] = 'name'
+    generic['description'] = 'description'
+    generic['category'] = 'category'
+    generic['notes'] = 'notes'
+    generic['status'] = 'status'
+    generic['type'] = 'type'
+    generic['registration number'] = 'registrationNumber'
+    generic['registration no'] = 'registrationNumber'
+    generic['registrationnumber'] = 'registrationNumber'
+    generic['reg number'] = 'registrationNumber'
+    generic['reg no'] = 'registrationNumber'
+    generic['vat number'] = 'vatNumber'
+    generic['vat no'] = 'vatNumber'
+    generic['vatnumber'] = 'vatNumber'
+    generic['tax code'] = 'taxCode'
+    generic['taxcode'] = 'taxCode'
+    generic['unit'] = 'unitOfMeasure'
+    generic['unit of measure'] = 'unitOfMeasure'
+    generic['uom'] = 'unitOfMeasure'
+    generic['unitofmeasure'] = 'unitOfMeasure'
 
-  // Entity-specific aliases — override generics where field names clash across entities
-  private static readonly ENTITY_ALIASES: Record<string, Record<string, string>> = {
-    customers: {
-      'email': 'contactEmail', 'contact email': 'contactEmail', 'contactemail': 'contactEmail',
-      'phone': 'contactPhone', 'contact phone': 'contactPhone', 'contactphone': 'contactPhone',
-      'credit terms': 'creditTerms', 'creditTerms': 'creditTerms',
-    },
-    suppliers: {
-      'email': 'contactEmail', 'contact email': 'contactEmail', 'contactemail': 'contactEmail',
-      'phone': 'contactPhone', 'contact phone': 'contactPhone', 'contactphone': 'contactPhone',
-      'payment terms': 'paymentTerms', 'paymentterms': 'paymentTerms',
-      'lead time': 'leadTimeDays', 'lead time (days)': 'leadTimeDays', 'leadtimedays': 'leadTimeDays',
-      'preferred': 'preferredSupplier', 'preferred supplier': 'preferredSupplier', 'preferredsupplier': 'preferredSupplier',
-    },
-    materials: {
-      'default cost': 'defaultCost', 'cost': 'defaultCost', 'defaultcost': 'defaultCost',
-      'default selling price': 'defaultSellingPrice', 'sell price': 'defaultSellingPrice',
-      'selling price': 'defaultSellingPrice', 'defaultsellingprice': 'defaultSellingPrice',
-      'markup %': 'defaultMarkupPercent', 'markup percent': 'defaultMarkupPercent',
-      'default markup %': 'defaultMarkupPercent', 'defaultmarkuppercent': 'defaultMarkupPercent',
-    },
-    services: {
-      'pricing': 'pricingType', 'pricing type': 'pricingType', 'pricingtype': 'pricingType',
-      'cost rate': 'defaultCostRate', 'default cost rate': 'defaultCostRate', 'defaultcostrate': 'defaultCostRate',
-      'bill rate': 'defaultBillRate', 'bill rate (zar)': 'defaultBillRate', 'billable rate': 'defaultBillRate',
-      'default bill rate': 'defaultBillRate', 'defaultbillrate': 'defaultBillRate',
-      'standard hours': 'standardHours', 'standardhours': 'standardHours',
-    },
-    employees: {
-      // email and phone stay as-is — no remapping
-      'email': 'email', 'phone': 'phone',
-      'employee number': 'employeeNumber', 'emp no': 'employeeNumber',
-      'employee no': 'employeeNumber', 'employeenumber': 'employeeNumber',
-      'first name': 'firstName', 'firstname': 'firstName',
-      'last name': 'lastName', 'lastname': 'lastName',
-      'job title': 'jobTitle', 'jobtitle': 'jobTitle', 'title': 'jobTitle',
-      'employment type': 'employmentType', 'employmenttype': 'employmentType',
-      'billable rate': 'billableRate', 'billablerate': 'billableRate',
-      'cost rate': 'costRate',
-    },
-    departments: {},
+    const specific: Record<string, string> = {}
+
+    if (entity === 'customers' || entity === 'suppliers') {
+      specific['email'] = 'contactEmail'
+      specific['contact email'] = 'contactEmail'
+      specific['contactemail'] = 'contactEmail'
+      specific['phone'] = 'contactPhone'
+      specific['contact phone'] = 'contactPhone'
+      specific['contactphone'] = 'contactPhone'
+    }
+    if (entity === 'customers') {
+      specific['credit terms'] = 'creditTerms'
+      specific['creditTerms'] = 'creditTerms'
+    }
+    if (entity === 'suppliers') {
+      specific['payment terms'] = 'paymentTerms'
+      specific['paymentterms'] = 'paymentTerms'
+      specific['lead time'] = 'leadTimeDays'
+      specific['lead time (days)'] = 'leadTimeDays'
+      specific['leadtimedays'] = 'leadTimeDays'
+      specific['preferred'] = 'preferredSupplier'
+      specific['preferred supplier'] = 'preferredSupplier'
+      specific['preferredsupplier'] = 'preferredSupplier'
+    }
+    if (entity === 'materials') {
+      specific['default cost'] = 'defaultCost'
+      specific['cost'] = 'defaultCost'
+      specific['defaultcost'] = 'defaultCost'
+      specific['default selling price'] = 'defaultSellingPrice'
+      specific['sell price'] = 'defaultSellingPrice'
+      specific['selling price'] = 'defaultSellingPrice'
+      specific['defaultsellingprice'] = 'defaultSellingPrice'
+      specific['markup %'] = 'defaultMarkupPercent'
+      specific['markup percent'] = 'defaultMarkupPercent'
+      specific['default markup %'] = 'defaultMarkupPercent'
+      specific['defaultmarkuppercent'] = 'defaultMarkupPercent'
+    }
+    if (entity === 'services') {
+      specific['pricing'] = 'pricingType'
+      specific['pricing type'] = 'pricingType'
+      specific['pricingtype'] = 'pricingType'
+      specific['cost rate'] = 'defaultCostRate'
+      specific['default cost rate'] = 'defaultCostRate'
+      specific['defaultcostrate'] = 'defaultCostRate'
+      specific['bill rate'] = 'defaultBillRate'
+      specific['bill rate (zar)'] = 'defaultBillRate'
+      specific['billable rate'] = 'defaultBillRate'
+      specific['default bill rate'] = 'defaultBillRate'
+      specific['defaultbillrate'] = 'defaultBillRate'
+      specific['standard hours'] = 'standardHours'
+      specific['standardhours'] = 'standardHours'
+    }
+    if (entity === 'employees') {
+      specific['email'] = 'email'
+      specific['phone'] = 'phone'
+      specific['employee number'] = 'employeeNumber'
+      specific['emp no'] = 'employeeNumber'
+      specific['employee no'] = 'employeeNumber'
+      specific['employeenumber'] = 'employeeNumber'
+      specific['first name'] = 'firstName'
+      specific['firstname'] = 'firstName'
+      specific['last name'] = 'lastName'
+      specific['lastname'] = 'lastName'
+      specific['job title'] = 'jobTitle'
+      specific['jobtitle'] = 'jobTitle'
+      specific['title'] = 'jobTitle'
+      specific['employment type'] = 'employmentType'
+      specific['employmenttype'] = 'employmentType'
+      specific['billable rate'] = 'billableRate'
+      specific['billablerate'] = 'billableRate'
+      specific['cost rate'] = 'costRate'
+    }
+
+    return { ...generic, ...specific }
   }
 
   private normalizeRow(entity: string, row: Record<string, string>): Record<string, string> {
-    const entityAliases = MasterDataService.ENTITY_ALIASES[entity] ?? {}
+    const aliases = this.getAliases(entity)
     const out: Record<string, string> = {}
     for (const [k, v] of Object.entries(row)) {
       const norm = k.trim().toLowerCase()
-      // entity-specific aliases take priority over generic ones
-      const canonical = entityAliases[norm] ?? MasterDataService.GENERIC_ALIASES[norm] ?? norm
+      const canonical = aliases[norm] ?? norm
       out[canonical] = typeof v === 'string' ? v.trim() : String(v ?? '')
     }
     return out
