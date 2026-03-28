@@ -135,4 +135,19 @@ export const reportsApi = {
   receivables: () => api.get('/reports/receivables'),
 }
 
+const md = (entity: string) => `/master-data/${entity}`
+
+export const masterDataApi = {
+  list:      (entity: string, params?: any)        => api.get(md(entity), { params }),
+  get:       (entity: string, id: string)          => api.get(`${md(entity)}/${id}`),
+  create:    (entity: string, data: any)            => api.post(md(entity), data),
+  update:    (entity: string, id: string, data: any) => api.patch(`${md(entity)}/${id}`, data),
+  setStatus: (entity: string, id: string, status: string) => api.patch(`${md(entity)}/${id}/status`, { status }),
+  import:    (entity: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`${md(entity)}/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+}
+
 export default api

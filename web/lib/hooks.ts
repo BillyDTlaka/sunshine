@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   dashboardApi, rfqsApi, clientQuotesApi, supplierQuotesApi,
   approvalsApi, invoicesApi, deliveriesApi, clientsApi, suppliersApi,
-  reportsApi,
+  reportsApi, masterDataApi,
 } from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -104,3 +104,42 @@ export const useWinLossReport = (params?: any) =>
 
 export const useReceivablesReport = () =>
   useQuery({ queryKey: ['reports', 'receivables'], queryFn: () => reportsApi.receivables().then(r => r.data) })
+
+// ─── Master Data ──────────────────────────────────────────────────────────────
+export const useMasterData = (entity: string, params?: any) =>
+  useQuery({ queryKey: ['master-data', entity, params], queryFn: () => masterDataApi.list(entity, params).then(r => r.data) })
+
+export const useMasterDataItem = (entity: string, id: string) =>
+  useQuery({ queryKey: ['master-data', entity, id], queryFn: () => masterDataApi.get(entity, id).then(r => r.data), enabled: !!id })
+
+export const useCreateMasterData = (entity: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => masterDataApi.create(entity, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}
+
+export const useUpdateMasterData = (entity: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => masterDataApi.update(entity, id, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}
+
+export const useSetMasterDataStatus = (entity: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => masterDataApi.setStatus(entity, id, status).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}
+
+export const useImportMasterData = (entity: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => masterDataApi.import(entity, file).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}

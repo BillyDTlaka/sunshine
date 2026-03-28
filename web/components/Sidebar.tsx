@@ -17,8 +17,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/payments', label: 'Payments', icon: '💳' },
   { href: '/dashboard/deliveries', label: 'Deliveries', icon: '🚚' },
   { href: '/dashboard/invoices', label: 'Invoices', icon: '💰' },
-  { href: '/dashboard/clients', label: 'Clients', icon: '🏢' },
-  { href: '/dashboard/suppliers', label: 'Suppliers', icon: '🔧' },
+  { href: '/dashboard/master-data', label: 'Master Data', icon: '🗂️' },
   { href: '/dashboard/reports', label: 'Reports', icon: '📊' },
 ]
 

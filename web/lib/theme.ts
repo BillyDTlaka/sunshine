@@ -50,6 +50,8 @@ export const STATUS_COLORS: Record<string, string> = {
   ISSUED: '#2563EB',
   PAID: '#059669',
   OVERDUE: '#DC2626',
+  ACTIVE: '#059669',
+  INACTIVE: '#6B7280',
 }
 
 export const STATUS_LABELS: Record<string, string> = {

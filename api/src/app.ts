@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
+import multipart from '@fastify/multipart'
 import { config } from './config'
 import prismaPlugin from './shared/plugins/prisma'
 import { AppError } from './shared/errors/AppError'
@@ -24,6 +25,7 @@ import deliveryRoutes from './modules/deliveries/deliveries.routes'
 import clientInvoiceRoutes from './modules/client-invoices/client-invoices.routes'
 import dashboardRoutes from './modules/dashboard/dashboard.routes'
 import reportRoutes from './modules/reports/reports.routes'
+import masterDataRoutes from './modules/master-data/master-data.routes'
 
 export async function buildApp() {
   const app = Fastify({
@@ -39,6 +41,7 @@ export async function buildApp() {
   await app.register(cors, { origin: true })
   await app.register(jwt, { secret: config.jwtSecret })
   await app.register(prismaPlugin)
+  await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } })
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
@@ -61,6 +64,7 @@ export async function buildApp() {
   await app.register(clientInvoiceRoutes, { prefix: '/rfqs' })
   await app.register(dashboardRoutes, { prefix: '/dashboard' })
   await app.register(reportRoutes, { prefix: '/reports' })
+  await app.register(masterDataRoutes, { prefix: '/master-data' })
 
   // Global error handler
   app.setErrorHandler((error, _request, reply) => {
