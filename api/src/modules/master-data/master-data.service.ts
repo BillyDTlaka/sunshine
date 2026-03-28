@@ -302,11 +302,58 @@ export class MasterDataService {
 
   // ─── Bulk Import ──────────────────────────────────────────────────────────
 
+  // Column aliases: maps common human-readable headers → canonical field names
+  private static readonly ALIASES: Record<string, string> = {
+    // generic
+    'code': 'code', 'name': 'name', 'description': 'description',
+    'category': 'category', 'notes': 'notes', 'status': 'status',
+    'type': 'type',
+    // customers / suppliers
+    'registration number': 'registrationNumber', 'registration no': 'registrationNumber', 'registrationnumber': 'registrationNumber',
+    'reg number': 'registrationNumber', 'reg no': 'registrationNumber',
+    'vat number': 'vatNumber', 'vat no': 'vatNumber', 'vatnumber': 'vatNumber',
+    'credit terms': 'creditTerms', 'creditTerms': 'creditTerms',
+    'contact email': 'contactEmail', 'contactemail': 'contactEmail', 'email': 'contactEmail',
+    'contact phone': 'contactPhone', 'contactphone': 'contactPhone', 'phone': 'contactPhone',
+    'payment terms': 'paymentTerms', 'paymentterms': 'paymentTerms',
+    'lead time': 'leadTimeDays', 'lead time (days)': 'leadTimeDays', 'leadtimedays': 'leadTimeDays',
+    'preferred': 'preferredSupplier', 'preferred supplier': 'preferredSupplier', 'preferredsupplier': 'preferredSupplier',
+    // materials
+    'unit': 'unitOfMeasure', 'unit of measure': 'unitOfMeasure', 'uom': 'unitOfMeasure', 'unitofmeasure': 'unitOfMeasure',
+    'default cost': 'defaultCost', 'cost': 'defaultCost', 'defaultcost': 'defaultCost',
+    'default selling price': 'defaultSellingPrice', 'sell price': 'defaultSellingPrice', 'selling price': 'defaultSellingPrice', 'defaultsellingprice': 'defaultSellingPrice',
+    'markup %': 'defaultMarkupPercent', 'markup percent': 'defaultMarkupPercent', 'default markup %': 'defaultMarkupPercent', 'defaultmarkuppercent': 'defaultMarkupPercent',
+    'tax code': 'taxCode', 'taxcode': 'taxCode',
+    // services
+    'pricing': 'pricingType', 'pricing type': 'pricingType', 'pricingtype': 'pricingType',
+    'cost rate': 'defaultCostRate', 'default cost rate': 'defaultCostRate', 'defaultcostrate': 'defaultCostRate',
+    'bill rate': 'defaultBillRate', 'bill rate (zar)': 'defaultBillRate', 'billable rate': 'defaultBillRate',
+    'default bill rate': 'defaultBillRate', 'defaultbillrate': 'defaultBillRate',
+    'standard hours': 'standardHours', 'standardhours': 'standardHours',
+    // employees
+    'employee number': 'employeeNumber', 'emp no': 'employeeNumber', 'employee no': 'employeeNumber', 'employeenumber': 'employeeNumber',
+    'first name': 'firstName', 'firstname': 'firstName',
+    'last name': 'lastName', 'lastname': 'lastName',
+    'job title': 'jobTitle', 'jobtitle': 'jobTitle', 'title': 'jobTitle',
+    'employment type': 'employmentType', 'employmenttype': 'employmentType',
+    'billable rate': 'billableRate', 'billablerate': 'billableRate',
+  }
+
+  private normalizeRow(row: Record<string, string>): Record<string, string> {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(row)) {
+      const norm = k.trim().toLowerCase()
+      const canonical = MasterDataService.ALIASES[norm] ?? norm
+      out[canonical] = typeof v === 'string' ? v.trim() : String(v ?? '')
+    }
+    return out
+  }
+
   async importRecords(entity: string, rows: Record<string, string>[]) {
     const results = { created: 0, updated: 0, errors: [] as { row: number; message: string }[] }
 
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]
+      const row = this.normalizeRow(rows[i])
       try {
         await this.upsertRow(entity, row)
         results.created++
