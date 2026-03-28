@@ -26,6 +26,7 @@ import clientInvoiceRoutes from './modules/client-invoices/client-invoices.route
 import dashboardRoutes from './modules/dashboard/dashboard.routes'
 import reportRoutes from './modules/reports/reports.routes'
 import masterDataRoutes from './modules/master-data/master-data.routes'
+import salesRoutes from './modules/sales/sales.routes'
 
 export async function buildApp() {
   const app = Fastify({
@@ -65,6 +66,7 @@ export async function buildApp() {
   await app.register(dashboardRoutes, { prefix: '/dashboard' })
   await app.register(reportRoutes, { prefix: '/reports' })
   await app.register(masterDataRoutes, { prefix: '/master-data' })
+  await app.register(salesRoutes, { prefix: '/sales' })
 
   // Global error handler
   app.setErrorHandler((error, _request, reply) => {

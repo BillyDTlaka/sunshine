@@ -65,12 +65,13 @@ export const supplierQuotesApi = {
 }
 
 export const clientQuotesApi = {
+  listAll: (params?: any) => api.get('/sales/client-quotes', { params }),
   list: (rfqId: string) => api.get(`/rfqs/${rfqId}/client-quotes`),
-  get: (id: string) => api.get(`/client-quotes/${id}`),
+  get: (id: string) => api.get(`/rfqs/client-quotes/${id}`),
   create: (rfqId: string, data: any) => api.post(`/rfqs/${rfqId}/client-quotes`, data),
-  submitForApproval: (id: string) => api.post(`/client-quotes/${id}/submit-for-approval`),
-  markSent: (id: string, sentTo?: string) => api.post(`/client-quotes/${id}/mark-sent`, { sentTo }),
-  updateLine: (id: string, lineId: string, data: any) => api.patch(`/client-quotes/${id}/quote-lines/${lineId}`, data),
+  submitForApproval: (id: string) => api.post(`/rfqs/client-quotes/${id}/submit-for-approval`),
+  markSent: (id: string, sentTo?: string) => api.post(`/rfqs/client-quotes/${id}/mark-sent`, { sentTo }),
+  updateLine: (id: string, lineId: string, data: any) => api.patch(`/rfqs/client-quotes/${id}/quote-lines/${lineId}`, data),
 }
 
 export const approvalsApi = {
@@ -80,8 +81,9 @@ export const approvalsApi = {
 }
 
 export const purchaseOrdersApi = {
+  listAll: (params?: any) => api.get('/sales/purchase-orders', { params }),
   create: (rfqId: string, data: any) => api.post(`/rfqs/${rfqId}/purchase-orders`, data),
-  get: (id: string) => api.get(`/purchase-orders/${id}`),
+  get: (id: string) => api.get(`/rfqs/purchase-orders/${id}`),
 }
 
 export const supplierAwardsApi = {

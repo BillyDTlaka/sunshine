@@ -170,6 +170,11 @@ enum MasterStatus {
   INACTIVE
 }
 
+enum RfqType {
+  RFQ
+  RFP
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -278,6 +283,7 @@ model Rfq {
   receivedDate     DateTime  @default(now())
   deadline         DateTime?
   description      String?
+  type             RfqType   @default(RFQ)
   status           RfqStatus @default(RFQ_DRAFT)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

@@ -4,6 +4,31 @@ import { NotFoundError } from '../../shared/errors/AppError'
 export class PurchaseOrderService {
   constructor(private prisma: PrismaClient) {}
 
+  async findAll({ page = 1, limit = 20, search }: any = {}) {
+    const where: any = {}
+    if (search) where.OR = [
+      { poNumber: { contains: search, mode: 'insensitive' } },
+      { rfq: { referenceNumber: { contains: search, mode: 'insensitive' } } },
+      { client: { name: { contains: search, mode: 'insensitive' } } },
+    ]
+
+    const [data, total] = await Promise.all([
+      this.prisma.purchaseOrder.findMany({
+        where,
+        include: {
+          rfq: { select: { id: true, referenceNumber: true } },
+          client: { select: { id: true, name: true } },
+          clientQuote: { select: { id: true, versionNumber: true, totalSell: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.purchaseOrder.count({ where }),
+    ])
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
+  }
+
   async create(rfqId: string, data: any, userId: string) {
     const po = await this.prisma.purchaseOrder.create({
       data: {

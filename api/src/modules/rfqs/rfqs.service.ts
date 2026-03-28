@@ -86,13 +86,16 @@ export class RfqService {
   }
 
   async create(data: any) {
+    const type = data.type ?? 'RFQ'
     const count = await this.prisma.rfq.count()
     const year = new Date().getFullYear()
-    const referenceNumber = `RFQ-${year}-${String(count + 1).padStart(4, '0')}`
+    const prefix = type === 'RFP' ? 'RFP' : 'RFQ'
+    const referenceNumber = `${prefix}-${year}-${String(count + 1).padStart(4, '0')}`
 
     return this.prisma.rfq.create({
       data: {
         referenceNumber,
+        type,
         clientId: data.clientId,
         contactId: data.contactId,
         accountManagerId: data.accountManagerId,

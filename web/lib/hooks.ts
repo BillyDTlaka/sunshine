@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   dashboardApi, rfqsApi, clientQuotesApi, supplierQuotesApi,
   approvalsApi, invoicesApi, deliveriesApi, clientsApi, suppliersApi,
-  reportsApi, masterDataApi,
+  reportsApi, masterDataApi, purchaseOrdersApi,
 } from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -32,6 +32,12 @@ export const useUpdateRfqStatus = () => {
 }
 
 // ─── Client Quotes ────────────────────────────────────────────────────────────
+export const useAllClientQuotes = (params?: any) =>
+  useQuery({ queryKey: ['client-quotes', 'all', params], queryFn: () => clientQuotesApi.listAll(params).then(r => r.data) })
+
+export const useAllPurchaseOrders = (params?: any) =>
+  useQuery({ queryKey: ['purchase-orders', 'all', params], queryFn: () => purchaseOrdersApi.listAll(params).then(r => r.data) })
+
 export const useClientQuotes = (rfqId: string) =>
   useQuery({ queryKey: ['client-quotes', rfqId], queryFn: () => clientQuotesApi.list(rfqId).then(r => r.data), enabled: !!rfqId })
 

@@ -16,6 +16,7 @@ const rfqSchema = z.object({
   clientId: z.string().uuid(),
   contactId: z.string().uuid().optional(),
   accountManagerId: z.string().uuid().optional(),
+  type: z.enum(['RFQ', 'RFP']).default('RFQ'),
   deadline: z.string().datetime().optional(),
   description: z.string().optional(),
   lineItems: z.array(lineItemSchema).default([]),

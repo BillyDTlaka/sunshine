@@ -4,6 +4,30 @@ import { NotFoundError, AppError } from '../../shared/errors/AppError'
 export class ClientQuoteService {
   constructor(private prisma: PrismaClient) {}
 
+  async findAll({ page = 1, limit = 20, status, search }: any = {}) {
+    const where: any = {}
+    if (status) where.status = status
+    if (search) where.OR = [
+      { rfq: { referenceNumber: { contains: search, mode: 'insensitive' } } },
+      { rfq: { client: { name: { contains: search, mode: 'insensitive' } } } },
+    ]
+
+    const [data, total] = await Promise.all([
+      this.prisma.clientQuote.findMany({
+        where,
+        include: {
+          rfq: { include: { client: { select: { id: true, name: true } } } },
+          preparedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.clientQuote.count({ where }),
+    ])
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
+  }
+
   async findByRfq(rfqId: string) {
     return this.prisma.clientQuote.findMany({
       where: { rfqId },
