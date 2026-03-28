@@ -6,6 +6,7 @@ dist/
 .DS_Store
 *.log
 coverage/
+tsconfig.tsbuildinfo
 
 # Keep migrations tracked (needed for Railway deploy)
 # api/prisma/migrations/ is intentionally NOT ignored
