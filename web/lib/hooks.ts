@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   dashboardApi, rfqsApi, clientQuotesApi, supplierQuotesApi,
   approvalsApi, invoicesApi, deliveriesApi, clientsApi, suppliersApi,
-  reportsApi, masterDataApi, purchaseOrdersApi,
+  reportsApi, masterDataApi, purchaseOrdersApi, projectAdminApi,
 } from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -147,5 +147,54 @@ export const useImportMasterData = (entity: string) => {
   return useMutation({
     mutationFn: (file: File) => masterDataApi.import(entity, file).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}
+
+// ─── Project Admin ────────────────────────────────────────────────────────────
+export const useActiveProjects = (params?: any) =>
+  useQuery({ queryKey: ['project-admin', 'active', params], queryFn: () => projectAdminApi.activeProjects(params).then(r => r.data) })
+
+export const useAllSupplierAwards = (params?: any) =>
+  useQuery({ queryKey: ['project-admin', 'awards', params], queryFn: () => projectAdminApi.supplierAwards(params).then(r => r.data) })
+
+export const useAllProFormas = (params?: any) =>
+  useQuery({ queryKey: ['project-admin', 'pro-formas', params], queryFn: () => projectAdminApi.proFormas(params).then(r => r.data) })
+
+export const useAllRequisitions = (params?: any) =>
+  useQuery({ queryKey: ['project-admin', 'requisitions', params], queryFn: () => projectAdminApi.requisitions(params).then(r => r.data) })
+
+export const useAllPayments = (params?: any) =>
+  useQuery({ queryKey: ['project-admin', 'payments', params], queryFn: () => projectAdminApi.payments(params).then(r => r.data) })
+
+export const useMarkProFormaReceived = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, amount }: { id: string; amount: number }) => projectAdminApi.markProFormaReceived(id, amount),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project-admin', 'pro-formas'] })
+      qc.invalidateQueries({ queryKey: ['project-admin', 'active'] })
+    },
+  })
+}
+
+export const useSubmitRequisition = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => projectAdminApi.submitRequisition(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project-admin', 'requisitions'] })
+      qc.invalidateQueries({ queryKey: ['project-admin', 'active'] })
+    },
+  })
+}
+
+export const useRecordPayment = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reqId, data }: { reqId: string; data: any }) => projectAdminApi.recordPayment(reqId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project-admin', 'payments'] })
+      qc.invalidateQueries({ queryKey: ['project-admin', 'active'] })
+    },
   })
 }

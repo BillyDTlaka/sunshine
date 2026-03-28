@@ -8,10 +8,7 @@ import { useAuthStore } from '@/store/auth.store'
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
   { href: '/dashboard/sales', label: 'Sales', icon: '📋' },
-  { href: '/dashboard/supplier-selection', label: 'Supplier Selection', icon: '🏭' },
-  { href: '/dashboard/pro-formas', label: 'Pro Formas', icon: '🧾' },
-  { href: '/dashboard/requisitions', label: 'Requisitions', icon: '📝' },
-  { href: '/dashboard/payments', label: 'Payments', icon: '💳' },
+  { href: '/dashboard/project-admin', label: 'Project Admin', icon: '🏗️' },
   { href: '/dashboard/deliveries', label: 'Deliveries', icon: '🚚' },
   { href: '/dashboard/invoices', label: 'Invoices', icon: '💰' },
   { href: '/dashboard/master-data', label: 'Master Data', icon: '🗂️' },

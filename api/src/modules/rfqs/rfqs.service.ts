@@ -74,15 +74,61 @@ export class RfqService {
         accountManager: { select: { id: true, firstName: true, lastName: true } },
         lineItems: { orderBy: { lineNumber: 'asc' } },
         supplierQuotes: { include: { supplier: true, lines: true } },
-        clientQuotes: { include: { lines: true } },
+        clientQuotes: {
+          include: {
+            lines: true,
+            preparedBy: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
         purchaseOrders: true,
-        supplierAwards: { include: { supplier: true, supplierQuote: true } },
+        supplierAwards: { include: { supplier: true, supplierQuote: { include: { lines: true } } } },
+        proFormaInvoices: { include: { supplier: true } },
+        requisitions: {
+          include: {
+            supplier: true,
+            requestedBy: { select: { id: true, firstName: true, lastName: true } },
+            approvals: { include: { approver: { select: { id: true, firstName: true, lastName: true } } } },
+            supplierPayments: true,
+          },
+        },
         deliveries: { include: { deliveryNote: true } },
         clientInvoices: true,
       },
     })
     if (!rfq) throw new NotFoundError('RFQ')
     return rfq
+  }
+
+  async findActive({ page = 1, limit = 20, status, search }: any = {}) {
+    const ACTIVE_STATUSES = [
+      'PO_RECEIVED', 'SUPPLIER_SELECTION_PENDING', 'SUPPLIER_SELECTED',
+      'PRO_FORMA_REQUESTED', 'PRO_FORMA_RECEIVED', 'REQUISITION_PENDING',
+      'REQUISITION_APPROVED', 'PAYMENT_PENDING', 'PAID_TO_SUPPLIER',
+      'DELIVERY_SCHEDULED', 'IN_TRANSIT', 'DELIVERED',
+    ]
+    const where: any = { status: { in: status ? [status] : ACTIVE_STATUSES } }
+    if (search) where.OR = [
+      { referenceNumber: { contains: search, mode: 'insensitive' } },
+      { client: { name: { contains: search, mode: 'insensitive' } } },
+    ]
+    const [data, total] = await Promise.all([
+      this.prisma.rfq.findMany({
+        where,
+        include: {
+          client: { select: { id: true, name: true } },
+          accountManager: { select: { id: true, firstName: true, lastName: true } },
+          supplierAwards: { include: { supplier: { select: { id: true, name: true } } }, take: 1 },
+          proFormaInvoices: { orderBy: { requestedAt: 'desc' }, take: 1 },
+          requisitions: { orderBy: { createdAt: 'desc' }, take: 1 },
+          _count: { select: { supplierQuotes: true, clientQuotes: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.rfq.count({ where }),
+    ])
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
   }
 
   async create(data: any) {

@@ -4,6 +4,31 @@ import { NotFoundError } from '../../shared/errors/AppError'
 export class RequisitionService {
   constructor(private prisma: PrismaClient) {}
 
+  async findAll({ page = 1, limit = 20, status, search }: any = {}) {
+    const where: any = {}
+    if (status) where.status = status
+    if (search) where.OR = [
+      { rfq: { referenceNumber: { contains: search, mode: 'insensitive' } } },
+      { supplier: { name: { contains: search, mode: 'insensitive' } } },
+    ]
+    const [data, total] = await Promise.all([
+      this.prisma.requisition.findMany({
+        where,
+        include: {
+          rfq: { include: { client: { select: { id: true, name: true } } } },
+          supplier: { select: { id: true, name: true } },
+          requestedBy: { select: { id: true, firstName: true, lastName: true } },
+          approvals: { select: { decision: true, level: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.requisition.count({ where }),
+    ])
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
+  }
+
   async create(rfqId: string, data: any, userId: string) {
     return this.prisma.requisition.create({
       data: {

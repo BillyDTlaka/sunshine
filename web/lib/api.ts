@@ -152,4 +152,17 @@ export const masterDataApi = {
   },
 }
 
+const pa = (path: string) => `/project-admin/${path}`
+
+export const projectAdminApi = {
+  activeProjects: (params?: any)                      => api.get(pa('active-projects'), { params }),
+  supplierAwards: (params?: any)                      => api.get(pa('supplier-awards'), { params }),
+  proFormas:      (params?: any)                      => api.get(pa('pro-formas'), { params }),
+  markProFormaReceived: (id: string, amount: number)  => api.patch(pa(`pro-formas/${id}/mark-received`), { amount }),
+  requisitions:   (params?: any)                      => api.get(pa('requisitions'), { params }),
+  submitRequisition: (id: string)                     => api.post(pa(`requisitions/${id}/submit`)),
+  payments:       (params?: any)                      => api.get(pa('payments'), { params }),
+  recordPayment:  (reqId: string, data: any)          => api.post(pa(`requisitions/${reqId}/payments`), data),
+}
+
 export default api
