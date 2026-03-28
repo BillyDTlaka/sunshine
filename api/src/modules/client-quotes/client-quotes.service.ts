@@ -77,7 +77,6 @@ export class ClientQuoteService {
         approvals: {
           create: {
             entityType: 'CLIENT_QUOTE',
-            entityId: id,
             approverId: userId,
             decision: 'PENDING',
             level: 1,

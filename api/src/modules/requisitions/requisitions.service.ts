@@ -27,7 +27,6 @@ export class RequisitionService {
         approvals: {
           create: {
             entityType: 'REQUISITION',
-            entityId: id,
             approverId: req.requestedById,
             decision: 'PENDING',
             level: 1,
