@@ -7,10 +7,10 @@ import {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const useDashboardSummary = () =>
-  useQuery({ queryKey: ['dashboard', 'summary'], queryFn: () => dashboardApi.summary().then(r => r.data), staleTime: 30000 })
+  useQuery({ queryKey: ['dashboard', 'summary'], queryFn: () => dashboardApi.summary().then(r => r.data) })
 
 export const useDashboardAlerts = () =>
-  useQuery({ queryKey: ['dashboard', 'alerts'], queryFn: () => dashboardApi.alerts().then(r => r.data), staleTime: 30000 })
+  useQuery({ queryKey: ['dashboard', 'alerts'], queryFn: () => dashboardApi.alerts().then(r => r.data) })
 
 // ─── RFQs ─────────────────────────────────────────────────────────────────────
 export const useRfqs = (params?: any) =>

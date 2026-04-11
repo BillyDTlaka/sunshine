@@ -7,7 +7,13 @@ import { useState } from 'react'
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
-      queries: { staleTime: 30000, retry: 1 },
+      queries: {
+        staleTime: 0,             // always refetch when component mounts or window refocuses
+        gcTime: 5 * 60 * 1000,   // keep unused cache for 5 min so navigation back is instant
+        retry: 1,
+        refetchOnWindowFocus: true,
+        refetchOnMount: true,
+      },
     },
   }))
 
