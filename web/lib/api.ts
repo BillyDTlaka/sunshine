@@ -137,9 +137,10 @@ export const projectsApi = {
   create:       (data: any)                   => api.post('/projects', data),
   update:       (id: string, data: any)       => api.patch(`/projects/${id}`, data),
   updateStatus: (id: string, status: string)  => api.patch(`/projects/${id}/status`, { status }),
-  addLineItem:    (id: string, data: any)           => api.post(`/projects/${id}/line-items`, data),
-  updateLineItem: (id: string, lineId: string, data: any) => api.patch(`/projects/${id}/line-items/${lineId}`, data),
-  deleteLineItem: (id: string, lineId: string)      => api.delete(`/projects/${id}/line-items/${lineId}`),
+  addLineItem:      (id: string, data: any)                 => api.post(`/projects/${id}/line-items`, data),
+  updateLineItem:   (id: string, lineId: string, data: any) => api.patch(`/projects/${id}/line-items/${lineId}`, data),
+  deleteLineItem:   (id: string, lineId: string)            => api.delete(`/projects/${id}/line-items/${lineId}`),
+  sendToSuppliers:  (id: string, data: any)                 => api.post(`/projects/${id}/send-to-suppliers`, data),
 }
 
 export const tasksApi = {

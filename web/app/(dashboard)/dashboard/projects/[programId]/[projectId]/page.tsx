@@ -8,9 +8,194 @@ import { Card } from '@/components/Card'
 import { Badge } from '@/components/Badge'
 import {
   useProject, useUpdateProjectStatus, useCreateTask, useTasks, useUpdateTask,
-  useAddLineItem, useUpdateLineItem, useDeleteLineItem,
+  useAddLineItem, useUpdateLineItem, useDeleteLineItem, useSendToSuppliers,
+  useSuppliers,
 } from '@/lib/hooks'
 import { STATUS_LABELS, PROJECT_STATUS_ORDER } from '@/lib/theme'
+
+// ─── Workflow stepper config ──────────────────────────────────────────────────
+
+const WORKFLOW_STEPS: { status: string; label: string; description: string }[] = [
+  { status: 'NEW_REQUEST',   label: 'Quote Captured',      description: 'Client RFQ received and captured' },
+  { status: 'ESTIMATING',    label: 'Sent to Suppliers',   description: 'Awaiting supplier pricing' },
+  { status: 'QUOTED',        label: 'Quote Prepared',      description: 'Pricing received, quote built' },
+  { status: 'SUBMITTED',     label: 'Quote Submitted',     description: 'Quote sent to client' },
+  { status: 'WON',           label: 'Awarded',             description: 'LCK won the bid' },
+  { status: 'EXECUTING',     label: 'Executing',           description: 'Procurement & delivery underway' },
+  { status: 'COMPLETED',     label: 'Complete',            description: 'Work completed' },
+]
+
+const STATUS_STEP_INDEX: Record<string, number> = {
+  NEW_REQUEST:   0,
+  ESTIMATING:    1,
+  QUOTED:        2,
+  SUBMITTED:     3,
+  WON:           4,
+  EXECUTING:     5,
+  WAITING_CLIENT: 5,
+  COMPLETED:     6,
+  CLOSED:        6,
+  LOST:          -1,
+}
+
+function WorkflowStepper({ status }: { status: string }) {
+  if (status === 'LOST') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <span className="text-red-500 font-semibold">✕ Lost</span>
+        <span>This quote was not awarded.</span>
+      </div>
+    )
+  }
+
+  const currentIdx = STATUS_STEP_INDEX[status] ?? 0
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <div className="flex items-start gap-0 min-w-max">
+        {WORKFLOW_STEPS.map((step, i) => {
+          const done = i < currentIdx
+          const active = i === currentIdx
+          const upcoming = i > currentIdx
+
+          return (
+            <div key={step.status} className="flex items-start">
+              {/* Step */}
+              <div className="flex flex-col items-center w-28">
+                <div className={clsx(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all',
+                  done    && 'bg-brand border-brand text-white',
+                  active  && 'bg-white border-brand text-brand',
+                  upcoming && 'bg-white border-gray-200 text-gray-300',
+                )}>
+                  {done ? (
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span>{i + 1}</span>
+                  )}
+                </div>
+                <p className={clsx('text-xs font-semibold mt-1.5 text-center leading-tight', done && 'text-brand', active && 'text-brand', upcoming && 'text-gray-300')}>
+                  {step.label}
+                </p>
+                {active && <p className="text-xs text-gray-400 text-center mt-0.5 leading-tight">{step.description}</p>}
+              </div>
+
+              {/* Connector */}
+              {i < WORKFLOW_STEPS.length - 1 && (
+                <div className={clsx('h-0.5 w-8 mt-4 mx-0.5 flex-shrink-0 transition-all', i < currentIdx ? 'bg-brand' : 'bg-gray-100')} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Send to Suppliers modal ──────────────────────────────────────────────────
+
+function SendToSuppliersModal({ projectId, onClose, onSuccess }: { projectId: string; onClose: () => void; onSuccess: (result: any) => void }) {
+  const { data: suppliersData } = useSuppliers({ limit: 200 })
+  const suppliers: any[] = (suppliersData as any)?.data ?? (Array.isArray(suppliersData) ? suppliersData : [])
+
+  const { mutateAsync: sendToSuppliers, isPending } = useSendToSuppliers(projectId)
+  const [selected, setSelected] = useState<string[]>([])
+  const [deadline, setDeadline] = useState('')
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState('')
+
+  const toggle = (id: string) =>
+    setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    if (selected.length === 0) { setError('Select at least one supplier'); return }
+    try {
+      const result = await sendToSuppliers({
+        supplierIds: selected,
+        deadline: deadline ? new Date(deadline).toISOString() : undefined,
+        notes: notes || undefined,
+      })
+      onSuccess(result)
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to send to suppliers')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Request Supplier Quotes</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Select suppliers to email the line items to</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+
+        <form onSubmit={submit} className="flex flex-col flex-1 min-h-0">
+          {/* Supplier list */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1.5">
+            {suppliers.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-6">No suppliers found — add suppliers in Master Data first.</p>
+            )}
+            {suppliers.map((s: any) => (
+              <label key={s.id} className={clsx(
+                'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
+                selected.includes(s.id) ? 'border-brand bg-brand/5' : 'border-gray-100 hover:border-gray-200',
+              )}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(s.id)}
+                  onChange={() => toggle(s.id)}
+                  className="accent-brand w-4 h-4 flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{s.contactEmail ?? <span className="text-amber-500 italic">No email configured</span>}</p>
+                </div>
+                {!s.contactEmail && (
+                  <span className="text-xs text-amber-500 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded flex-shrink-0">No email</span>
+                )}
+              </label>
+            ))}
+          </div>
+
+          {/* Deadline + notes */}
+          <div className="px-6 py-4 border-t border-gray-100 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Quote deadline (optional)</label>
+                <input type="date" className="input text-sm w-full" value={deadline} onChange={e => setDeadline(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Selected</label>
+                <div className="text-sm font-semibold text-gray-900 pt-2">{selected.length} supplier{selected.length !== 1 ? 's' : ''}</div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Additional notes (optional)</label>
+              <textarea className="input text-sm w-full resize-none" rows={2} placeholder="Any specific instructions for suppliers..." value={notes} onChange={e => setNotes(e.target.value)} />
+            </div>
+            {error && <p className="text-xs text-red-600">{error}</p>}
+          </div>
+
+          <div className="px-6 pb-5 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="btn-secondary text-sm py-2">Cancel</button>
+            <button type="submit" disabled={isPending || selected.length === 0} className="btn-primary text-sm py-2">
+              {isPending ? 'Sending...' : `Send to ${selected.length || ''} supplier${selected.length !== 1 ? 's' : ''}`}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PRIORITY_COLOR: Record<string, string> = {
   LOW: 'text-gray-400', MEDIUM: 'text-blue-600', HIGH: 'text-amber-600', URGENT: 'text-red-600',
@@ -224,6 +409,99 @@ function LineItemsTab({ project }: { project: any }) {
   )
 }
 
+// ─── Supplier Bids tab ─────────────────────────────────────────────────────────
+
+function SupplierBidsTab({ project, onSent }: { project: any; onSent: () => void }) {
+  const [showModal, setShowModal] = useState(false)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const lineItemCount = project.lineItems?.length ?? 0
+
+  const handleSuccess = (result: any) => {
+    setShowModal(false)
+    const msg = result.emailsSent > 0
+      ? `Sent to ${result.emailsSent} supplier${result.emailsSent !== 1 ? 's' : ''} (ref: ${result.referenceNumber})${result.noEmail?.length ? ` — ${result.noEmail.join(', ')} had no email.` : ''}`
+      : `Created ${result.referenceNumber} — no emails sent (suppliers have no email configured)`
+    setSuccessMsg(msg)
+    onSent()
+  }
+
+  return (
+    <>
+      {showModal && (
+        <SendToSuppliersModal
+          projectId={project.id}
+          onClose={() => setShowModal(false)}
+          onSuccess={handleSuccess}
+        />
+      )}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="section-title">Supplier Bids</h3>
+          <button
+            className="btn-primary text-xs py-1.5"
+            disabled={lineItemCount === 0}
+            title={lineItemCount === 0 ? 'Add line items before sending to suppliers' : undefined}
+            onClick={() => { setSuccessMsg(null); setShowModal(true) }}
+          >
+            + Request Quotes
+          </button>
+        </div>
+
+        {successMsg && (
+          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-700">
+            {successMsg}
+          </div>
+        )}
+
+        {lineItemCount === 0 && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-700">
+            Add line items to the quote before sending to suppliers.
+          </div>
+        )}
+
+        {project.rfqs?.length === 0 ? (
+          <div className="text-center py-10">
+            <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="#d1d5db" strokeWidth={1.2} className="mx-auto mb-3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-gray-400 text-sm">No supplier requests yet</p>
+            <p className="text-xs text-gray-300 mt-1">Click &ldquo;Request Quotes&rdquo; to email suppliers</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-gray-100">
+              <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <th className="py-2 pr-4">Reference</th>
+                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 pr-4">Suppliers</th>
+                <th className="py-2 pr-4">Deadline</th>
+                <th className="py-2 pr-4">Sent</th>
+                <th className="py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {project.rfqs?.map((rfq: any) => (
+                <tr key={rfq.id} className="border-b border-gray-50">
+                  <td className="py-2 pr-4 font-mono font-semibold text-brand text-xs">{rfq.referenceNumber}</td>
+                  <td className="py-2 pr-4"><Badge status={rfq.status} /></td>
+                  <td className="py-2 pr-4 text-gray-500">{rfq._count?.supplierQuotes ?? 0}</td>
+                  <td className="py-2 pr-4 text-gray-400 text-xs">{rfq.deadline ? new Date(rfq.deadline).toLocaleDateString('en-ZA') : '—'}</td>
+                  <td className="py-2 pr-4 text-gray-400 text-xs">{new Date(rfq.createdAt).toLocaleDateString('en-ZA')}</td>
+                  <td className="py-2">
+                    <Link href={`/dashboard/rfqs/${rfq.id}`} className="text-brand hover:underline text-xs font-semibold">Open →</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+    </>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 type Tab = 'overview' | 'line-items' | 'suppliers' | 'tasks' | 'commercial'
 
 export default function ProjectDetailPage() {
@@ -257,8 +535,8 @@ export default function ProjectDetailPage() {
 
   const lineItemCount = project.lineItems?.length ?? 0
   const supplierBidCount = project.rfqs?.length ?? 0
-  const doneTasks = tasks.filter((t: any) => t.status === 'DONE').length
-  const totalTasks = tasks.length
+  const doneTasks = (tasks as any[]).filter((t: any) => t.status === 'DONE').length
+  const totalTasks = (tasks as any[]).length
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'overview',    label: 'Overview' },
@@ -322,6 +600,11 @@ export default function ProjectDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Workflow stepper */}
+        <div className="mt-5 pt-4 border-t border-gray-100">
+          <WorkflowStepper status={project.status} />
         </div>
 
         {totalTasks > 0 && (
@@ -404,50 +687,7 @@ export default function ProjectDetailPage() {
       {tab === 'line-items' && <LineItemsTab project={project} />}
 
       {/* Supplier Bids */}
-      {tab === 'suppliers' && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="section-title">Supplier Bids</h3>
-            <p className="text-xs text-gray-400">Send the line items to suppliers for pricing</p>
-          </div>
-          {project.rfqs?.length === 0 ? (
-            <div className="text-center py-10">
-              <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="#d1d5db" strokeWidth={1.2} className="mx-auto mb-3">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-gray-400 text-sm mb-1">No supplier bids yet</p>
-              <p className="text-xs text-gray-300">Supplier request PDF generation coming soon</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100">
-                <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="py-2 pr-4">Reference</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Supplier Quotes</th>
-                  <th className="py-2 pr-4">Client Quotes</th>
-                  <th className="py-2 pr-4">Date</th>
-                  <th className="py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {project.rfqs?.map((rfq: any) => (
-                  <tr key={rfq.id} className="border-b border-gray-50">
-                    <td className="py-2 pr-4 font-mono font-semibold text-brand text-xs">{rfq.referenceNumber}</td>
-                    <td className="py-2 pr-4"><Badge status={rfq.status} /></td>
-                    <td className="py-2 pr-4 text-gray-500">{rfq._count?.supplierQuotes ?? 0}</td>
-                    <td className="py-2 pr-4 text-gray-500">{rfq._count?.clientQuotes ?? 0}</td>
-                    <td className="py-2 pr-4 text-gray-400 text-xs">{new Date(rfq.createdAt).toLocaleDateString('en-ZA')}</td>
-                    <td className="py-2">
-                      <Link href={`/dashboard/rfqs/${rfq.id}`} className="text-brand hover:underline text-xs font-semibold">Open →</Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-      )}
+      {tab === 'suppliers' && <SupplierBidsTab project={project} onSent={refetch} />}
 
       {/* Tasks */}
       {tab === 'tasks' && (
@@ -456,14 +696,14 @@ export default function ProjectDetailPage() {
             <h3 className="section-title">Tasks</h3>
             {!addingTask && <button className="btn-primary text-xs py-1.5" onClick={() => setAddingTask(true)}>+ Add Task</button>}
           </div>
-          {tasks.length === 0 && !addingTask ? (
+          {(tasks as any[]).length === 0 && !addingTask ? (
             <div className="text-center py-8">
               <p className="text-gray-400 text-sm mb-3">No tasks yet</p>
               <button className="btn-primary text-xs py-1.5" onClick={() => setAddingTask(true)}>+ Add first task</button>
             </div>
           ) : (
             <>
-              {tasks.map((t: any) => <TaskRow key={t.id} task={t} onStatusChange={handleTaskStatusChange} />)}
+              {(tasks as any[]).map((t: any) => <TaskRow key={t.id} task={t} onStatusChange={handleTaskStatusChange} />)}
               {addingTask && <AddTaskForm projectId={projectId} onDone={() => { setAddingTask(false); refetchTasks() }} />}
             </>
           )}

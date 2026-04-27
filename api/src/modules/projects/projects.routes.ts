@@ -96,6 +96,24 @@ const projectRoutes: FastifyPluginAsync = async (app) => {
     const result = await service.parseRfqDocument(buffer, mimeType)
     return result
   })
+
+  // ─── Send to Suppliers ────────────────────────────────────────────────────
+  app.post('/:id/send-to-suppliers', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body = z.object({
+      supplierIds: z.array(z.string().uuid()).min(1),
+      deadline: z.string().optional(),
+      notes: z.string().optional(),
+    }).parse(request.body)
+    const user = (request as any).user
+    const result = await service.sendToSuppliers(id, body, {
+      userId: user.userId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    })
+    return reply.status(200).send(result)
+  })
 }
 
 export default projectRoutes

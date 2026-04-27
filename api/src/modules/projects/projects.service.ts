@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client'
 import Anthropic from '@anthropic-ai/sdk'
 import { config } from '../../config'
-import { NotFoundError, InvalidTransitionError } from '../../shared/errors/AppError'
+import { NotFoundError, InvalidTransitionError, AppError } from '../../shared/errors/AppError'
 import { AiPromptService } from '../ai-prompts/ai-prompts.service'
+import { EmailService } from '../../shared/services/email.service'
 
 const PROJECT_TRANSITIONS: Record<string, string[]> = {
   NEW_REQUEST:    ['ESTIMATING', 'LOST'],
@@ -221,6 +222,104 @@ export class ProjectService {
       if (board[p.status]) board[p.status].push(p)
     }
     return board
+  }
+
+  async sendToSuppliers(
+    projectId: string,
+    data: { supplierIds: string[]; deadline?: string; notes?: string },
+    requestedBy: { userId: string; firstName: string; lastName: string; email: string },
+  ) {
+    const project = await this.findById(projectId)
+    const lineItems: any[] = (project as any).lineItems ?? []
+    if (lineItems.length === 0) throw new AppError('No line items — add items to the quote before sending', 400)
+    if (data.supplierIds.length === 0) throw new AppError('Select at least one supplier', 400)
+
+    // Generate supplier request reference
+    const year = new Date().getFullYear()
+    const count = await this.prisma.rfq.count({ where: { referenceNumber: { startsWith: `SRQ-${year}-` } } })
+    const seq = String(count + 1).padStart(4, '0')
+    const referenceNumber = `SRQ-${year}-${seq}`
+
+    // Create Rfq (represents this send-to-suppliers event)
+    const rfq = await this.prisma.rfq.create({
+      data: {
+        referenceNumber,
+        projectId,
+        clientId: project.clientId,
+        status: 'SUPPLIER_QUOTES_REQUESTED',
+        description: data.notes ?? null,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+        lineItems: {
+          create: lineItems.map((li: any, i: number) => ({
+            lineNumber: i + 1,
+            description: li.description,
+            category: 'HARDWARE' as any,
+            quantity: Number(li.qty),
+            unit: li.unit,
+            notes: li.notes ?? null,
+          })),
+        },
+      },
+    })
+
+    // Create one SupplierQuote per supplier
+    await this.prisma.supplierQuote.createMany({
+      data: data.supplierIds.map(supplierId => ({
+        rfqId: rfq.id,
+        supplierId,
+        status: 'REQUESTED' as any,
+      })),
+    })
+
+    // Advance project to ESTIMATING if still at NEW_REQUEST
+    if (project.status === 'NEW_REQUEST') {
+      await this.prisma.project.update({ where: { id: projectId }, data: { status: 'ESTIMATING' } })
+    }
+
+    // Load supplier contact details and send emails
+    const suppliers = await this.prisma.supplier.findMany({
+      where: { id: { in: data.supplierIds } },
+      select: { id: true, name: true, contactEmail: true },
+    })
+
+    const emailSvc = new EmailService()
+    const deadlineFormatted = data.deadline
+      ? new Date(data.deadline).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
+      : undefined
+
+    const emailResults = await Promise.allSettled(
+      suppliers
+        .filter(s => s.contactEmail)
+        .map(s =>
+          emailSvc.sendSupplierRequest({
+            to: s.contactEmail!,
+            supplierName: s.name,
+            projectId: (project as any).projectId,
+            projectTitle: project.title,
+            referenceNumber,
+            campus: project.campus ?? undefined,
+            department: project.department ?? undefined,
+            deadline: deadlineFormatted,
+            notes: data.notes,
+            lineItems: lineItems.map((li: any) => ({
+              lineNumber: li.lineNumber,
+              description: li.description,
+              qty: Number(li.qty),
+              unit: li.unit,
+              notes: li.notes,
+            })),
+            labourRequired: project.labourRequired,
+            labourScope: project.labourScope,
+            contactName: `${requestedBy.firstName} ${requestedBy.lastName}`,
+            contactEmail: requestedBy.email,
+          }),
+        ),
+    )
+
+    const emailsSent = emailResults.filter(r => r.status === 'fulfilled').length
+    const noEmail = suppliers.filter(s => !s.contactEmail).map(s => s.name)
+
+    return { rfqId: rfq.id, referenceNumber, suppliersCount: suppliers.length, emailsSent, noEmail }
   }
 
   async parseRfqDocument(buffer: Buffer, mimeType: string) {

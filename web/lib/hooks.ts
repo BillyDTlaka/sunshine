@@ -277,6 +277,18 @@ export const useDeleteLineItem = (projectId: string) => {
   })
 }
 
+export const useSendToSuppliers = (projectId: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { supplierIds: string[]; deadline?: string; notes?: string }) =>
+      projectsApi.sendToSuppliers(projectId, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project', projectId] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
+  })
+}
+
 // ─── AI Prompts ───────────────────────────────────────────────────────────────
 export const useAiPrompts = () =>
   useQuery({ queryKey: ['ai-prompts'], queryFn: () => aiPromptsApi.list().then(r => r.data) })
