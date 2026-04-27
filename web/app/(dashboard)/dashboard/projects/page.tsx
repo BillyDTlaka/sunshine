@@ -168,14 +168,14 @@ export default function ProgramsPage() {
   const [showNew, setShowNew] = useState(false)
   const { data: programs, isLoading } = usePrograms(search ? { search } : undefined)
 
-  const grouped = (programs ?? []).reduce<Record<string, any[]>>((acc, p: any) => {
+  const grouped = ((programs ?? []) as any[]).reduce((acc: Record<string, any[]>, p: any) => {
     const key = p.client?.name ?? 'Unknown'
     if (!acc[key]) acc[key] = []
     acc[key].push(p)
     return acc
-  }, {})
+  }, {} as Record<string, any[]>)
 
-  const totalProjects = (programs ?? []).reduce((sum: number, p: any) => sum + (p._count?.projects ?? 0), 0)
+  const totalProjects = ((programs ?? []) as any[]).reduce((sum: number, p: any) => sum + (p._count?.projects ?? 0), 0)
 
   return (
     <div className="space-y-5">
