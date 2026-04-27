@@ -17,12 +17,22 @@ Analyse the provided document carefully and extract the following fields, return
   "department": "requesting department, faculty, or division, null if not specified",
   "deadline": "submission or delivery deadline in YYYY-MM-DD format, null if not specified",
   "priority": "estimated urgency based on deadline and wording — one of: LOW, MEDIUM, HIGH, URGENT",
-  "scopeOfWork": "clear and complete description of all work, supply, or services required",
-  "deliverables": "specific items, services, or outcomes the client expects to receive",
-  "notes": "important terms, conditions, special requirements, evaluation criteria, or anything LCK should know"
+  "scopeOfWork": "overall narrative description of the work or project context, null if not present",
+  "notes": "important terms, conditions, special requirements, evaluation criteria, or anything LCK should know",
+  "labourRequired": true or false — whether installation, configuration, or any labour/services are required,
+  "labourScope": "description of the installation or services work required, null if labourRequired is false",
+  "lineItems": [
+    {
+      "description": "item description",
+      "qty": numeric quantity,
+      "unit": "unit of measure — use one of: Each, m, m², m³, kg, Roll, Box, Set, Lot, Hour, Day — default to Each if unclear",
+      "notes": "any item-specific notes or specifications, null if none"
+    }
+  ]
 }
 
-Use null for any field that cannot be determined from the document. Be accurate and factual — do not invent information not present in the document.`,
+The lineItems array must contain every distinct item or material requested. If line items cannot be clearly identified, return an empty array [].
+Use null for any scalar field that cannot be determined. Be accurate and factual — do not invent information not present in the document.`,
   },
 ]
 

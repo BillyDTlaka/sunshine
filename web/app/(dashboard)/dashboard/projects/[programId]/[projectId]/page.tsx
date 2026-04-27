@@ -6,7 +6,10 @@ import Link from 'next/link'
 import { clsx } from 'clsx'
 import { Card } from '@/components/Card'
 import { Badge } from '@/components/Badge'
-import { useProject, useUpdateProjectStatus, useCreateTask, useTasks, useUpdateTask } from '@/lib/hooks'
+import {
+  useProject, useUpdateProjectStatus, useCreateTask, useTasks, useUpdateTask,
+  useAddLineItem, useUpdateLineItem, useDeleteLineItem,
+} from '@/lib/hooks'
 import { STATUS_LABELS, PROJECT_STATUS_ORDER } from '@/lib/theme'
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -20,6 +23,11 @@ const TASK_STATUS_COLS: Record<string, { label: string; color: string }> = {
   DONE:        { label: 'Done',        color: 'bg-green-50' },
 }
 
+function fmt(val: any) {
+  if (val == null || val === '') return '—'
+  return `R ${Number(val).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 function CommercialRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className={clsx('flex justify-between items-center py-2 border-b border-gray-50 last:border-0', highlight && 'font-semibold')}>
@@ -27,11 +35,6 @@ function CommercialRow({ label, value, highlight = false }: { label: string; val
       <span className={clsx('text-sm', highlight ? 'text-gray-900' : 'text-gray-700')}>{value}</span>
     </div>
   )
-}
-
-function fmt(val: any) {
-  if (val == null || val === '') return '—'
-  return `R ${Number(val).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function TaskRow({ task, onStatusChange }: { task: any; onStatusChange: (id: string, status: string) => void }) {
@@ -83,7 +86,145 @@ function AddTaskForm({ projectId, onDone }: { projectId: string; onDone: () => v
   )
 }
 
-type Tab = 'overview' | 'commercial' | 'scope' | 'tasks' | 'rfqs'
+function LineItemsTab({ project }: { project: any }) {
+  const projectId = project.id
+  const { mutateAsync: addItem, isPending: adding } = useAddLineItem(projectId)
+  const { mutateAsync: updateItem } = useUpdateLineItem(projectId)
+  const { mutateAsync: deleteItem } = useDeleteLineItem(projectId)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<{ description: string; qty: string; unit: string; notes: string }>({ description: '', qty: '1', unit: 'Each', notes: '' })
+  const [newForm, setNewForm] = useState({ description: '', qty: '1', unit: 'Each', notes: '' })
+  const [addingNew, setAddingNew] = useState(false)
+
+  const lineItems: any[] = project.lineItems ?? []
+
+  const startEdit = (li: any) => {
+    setEditId(li.id)
+    setEditForm({ description: li.description, qty: String(li.qty), unit: li.unit, notes: li.notes ?? '' })
+  }
+
+  const saveEdit = async () => {
+    if (!editId) return
+    await updateItem({ lineId: editId, data: { description: editForm.description, qty: parseFloat(editForm.qty), unit: editForm.unit, notes: editForm.notes || undefined } })
+    setEditId(null)
+  }
+
+  const saveNew = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newForm.description.trim()) return
+    await addItem({ description: newForm.description.trim(), qty: parseFloat(newForm.qty) || 1, unit: newForm.unit, notes: newForm.notes || undefined })
+    setNewForm({ description: '', qty: '1', unit: 'Each', notes: '' })
+    setAddingNew(false)
+  }
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="section-title">Line Items</h3>
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          {project.labourRequired && (
+            <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+              Labour required
+            </span>
+          )}
+          <span>{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
+              <th className="pb-2 pr-3 w-8">#</th>
+              <th className="pb-2 pr-3">Description</th>
+              <th className="pb-2 pr-3 w-20">Qty</th>
+              <th className="pb-2 pr-3 w-24">Unit</th>
+              <th className="pb-2 pr-3">Notes</th>
+              <th className="pb-2 w-20"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {lineItems.map((li: any, i: number) => (
+              <tr key={li.id}>
+                <td className="py-2 pr-3 text-gray-400 text-xs align-middle">{i + 1}</td>
+                {editId === li.id ? (
+                  <>
+                    <td className="py-1.5 pr-3">
+                      <input className="input text-sm" value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <input className="input text-sm" type="number" min="0.01" step="0.01" value={editForm.qty} onChange={e => setEditForm(f => ({ ...f, qty: e.target.value }))} />
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <input className="input text-sm" value={editForm.unit} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} />
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <input className="input text-sm" value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} />
+                    </td>
+                    <td className="py-1.5">
+                      <div className="flex gap-1">
+                        <button onClick={saveEdit} className="text-xs text-emerald-700 font-semibold hover:underline">Save</button>
+                        <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="py-2 pr-3 font-medium text-gray-900">{li.description}</td>
+                    <td className="py-2 pr-3 text-gray-700">{Number(li.qty).toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-gray-500">{li.unit}</td>
+                    <td className="py-2 pr-3 text-gray-400 text-xs">{li.notes ?? '—'}</td>
+                    <td className="py-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => startEdit(li)} className="text-xs text-brand hover:underline">Edit</button>
+                        <button onClick={() => deleteItem(li.id)} className="text-xs text-red-400 hover:underline">Del</button>
+                      </div>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+
+            {/* Add new row inline */}
+            {addingNew && (
+              <tr>
+                <td className="py-1.5 pr-3 text-gray-300 text-xs align-middle">+</td>
+                <td className="py-1.5 pr-3"><input className="input text-sm" placeholder="Description" value={newForm.description} onChange={e => setNewForm(f => ({ ...f, description: e.target.value }))} autoFocus /></td>
+                <td className="py-1.5 pr-3"><input className="input text-sm" type="number" min="0.01" step="0.01" value={newForm.qty} onChange={e => setNewForm(f => ({ ...f, qty: e.target.value }))} /></td>
+                <td className="py-1.5 pr-3"><input className="input text-sm" value={newForm.unit} onChange={e => setNewForm(f => ({ ...f, unit: e.target.value }))} /></td>
+                <td className="py-1.5 pr-3"><input className="input text-sm" placeholder="Notes" value={newForm.notes} onChange={e => setNewForm(f => ({ ...f, notes: e.target.value }))} /></td>
+                <td className="py-1.5">
+                  <div className="flex gap-1">
+                    <button onClick={saveNew as any} disabled={adding} className="text-xs text-emerald-700 font-semibold hover:underline">Add</button>
+                    <button onClick={() => setAddingNew(false)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {!addingNew && (
+        <button onClick={() => setAddingNew(true)} className="mt-3 flex items-center gap-1.5 text-xs text-brand hover:text-brand/80 font-medium transition-colors">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add line item
+        </button>
+      )}
+
+      {project.labourRequired && project.labourScope && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Labour / Installation Scope</p>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{project.labourScope}</p>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+type Tab = 'overview' | 'line-items' | 'suppliers' | 'tasks' | 'commercial'
 
 export default function ProjectDetailPage() {
   const { programId, projectId } = useParams<{ programId: string; projectId: string }>()
@@ -114,16 +255,18 @@ export default function ProjectDetailPage() {
     await updateTask({ id: taskId, data: { status } }); refetchTasks()
   }
 
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'commercial', label: 'Commercial' },
-    { key: 'scope', label: 'Scope' },
-    { key: 'tasks', label: `Tasks (${tasks.length})` },
-    { key: 'rfqs', label: `RFQs (${project.rfqs?.length ?? 0})` },
-  ]
-
+  const lineItemCount = project.lineItems?.length ?? 0
+  const supplierBidCount = project.rfqs?.length ?? 0
   const doneTasks = tasks.filter((t: any) => t.status === 'DONE').length
   const totalTasks = tasks.length
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'overview',    label: 'Overview' },
+    { key: 'line-items',  label: `Line Items (${lineItemCount})` },
+    { key: 'suppliers',   label: `Supplier Bids (${supplierBidCount})` },
+    { key: 'tasks',       label: `Tasks (${totalTasks})` },
+    { key: 'commercial',  label: 'Commercial' },
+  ]
 
   return (
     <div className="space-y-5 max-w-5xl">
@@ -147,6 +290,9 @@ export default function ProjectDetailPage() {
             <div className="flex items-center gap-3 flex-wrap mb-2">
               <span className="font-mono text-sm font-bold text-brand">{project.projectId}</span>
               <Badge status={project.priority} label={project.priority} />
+              {project.labourRequired && (
+                <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium">Labour</span>
+              )}
               {project.deadline && new Date(project.deadline) < new Date() && !['COMPLETED', 'CLOSED', 'LOST'].includes(project.status) && (
                 <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">OVERDUE</span>
               )}
@@ -156,7 +302,7 @@ export default function ProjectDetailPage() {
               <span><strong className="text-gray-700">Client:</strong> {project.client?.name}</span>
               {project.campus && <span><strong className="text-gray-700">Site:</strong> {project.campus}</span>}
               {project.department && <span><strong className="text-gray-700">Dept:</strong> {project.department}</span>}
-              <span><strong className="text-gray-700">Owner:</strong> {project.owner ? `${project.owner.firstName} ${project.owner.lastName}` : 'Unassigned'}</span>
+              {project.requestReference && <span><strong className="text-gray-700">Ref:</strong> {project.requestReference}</span>}
               {project.deadline && <span><strong className="text-gray-700">Deadline:</strong> {new Date(project.deadline).toLocaleDateString('en-ZA')}</span>}
             </div>
           </div>
@@ -192,26 +338,29 @@ export default function ProjectDetailPage() {
       </Card>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 gap-0.5">
+      <div className="flex border-b border-gray-200 gap-0.5 overflow-x-auto">
         {TABS.map(t => (
-          <button key={t.key} className={clsx('px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px', tab === t.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-900')} onClick={() => setTab(t.key)}>
+          <button key={t.key} className={clsx('px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap', tab === t.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-900')} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* Overview */}
       {tab === 'overview' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
-            <h3 className="section-title mb-3">Project Info</h3>
+            <h3 className="section-title mb-3">Quote Info</h3>
             {[
-              { label: 'Status', value: <Badge status={project.status} /> },
-              { label: 'Priority', value: <span className={clsx('text-sm font-semibold', PRIORITY_COLOR[project.priority] ?? '')}>{project.priority}</span> },
-              { label: 'Created', value: new Date(project.createdAt).toLocaleDateString('en-ZA') },
-              { label: 'Deadline', value: project.deadline ? new Date(project.deadline).toLocaleDateString('en-ZA') : '—' },
-              { label: 'Request Ref', value: project.requestReference ?? '—' },
-              { label: 'Campus', value: project.campus ?? '—' },
-              { label: 'Department', value: project.department ?? '—' },
+              { label: 'Status',      value: <Badge status={project.status} /> },
+              { label: 'Priority',    value: <span className={clsx('text-sm font-semibold', PRIORITY_COLOR[project.priority] ?? '')}>{project.priority}</span> },
+              { label: 'Client Ref',  value: project.requestReference ?? '—' },
+              { label: 'Campus',      value: project.campus ?? '—' },
+              { label: 'Department',  value: project.department ?? '—' },
+              { label: 'Deadline',    value: project.deadline ? new Date(project.deadline).toLocaleDateString('en-ZA') : '—' },
+              { label: 'Labour',      value: project.labourRequired ? 'Required' : 'Materials only' },
+              { label: 'Line Items',  value: `${lineItemCount} item${lineItemCount !== 1 ? 's' : ''}` },
+              { label: 'Created',     value: new Date(project.createdAt).toLocaleDateString('en-ZA') },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between items-center text-sm border-b border-gray-50 last:border-0 py-1.5">
                 <span className="text-gray-500">{label}</span>
@@ -219,17 +368,109 @@ export default function ProjectDetailPage() {
               </div>
             ))}
           </Card>
-          <Card>
-            <h3 className="section-title mb-3">Quick Financials</h3>
-            <CommercialRow label="Est. Revenue" value={fmt(project.estimatedRevenue)} />
-            <CommercialRow label="Est. Materials" value={fmt(project.estimatedMaterial)} />
-            <CommercialRow label="Est. Labour" value={fmt(project.estimatedLabour)} />
-            <CommercialRow label="Markup %" value={project.markupPct ? `${project.markupPct}%` : '—'} />
-            <CommercialRow label="Planned Gross Margin" value={fmt(project.plannedGrossMargin)} highlight />
-          </Card>
+
+          <div className="space-y-4">
+            <Card>
+              <h3 className="section-title mb-3">Commercial Summary</h3>
+              <CommercialRow label="Est. Revenue" value={fmt(project.estimatedRevenue)} />
+              <CommercialRow label="Est. Materials" value={fmt(project.estimatedMaterial)} />
+              <CommercialRow label="Est. Labour" value={fmt(project.estimatedLabour)} />
+              <CommercialRow label="Markup %" value={project.markupPct ? `${project.markupPct}%` : '—'} />
+              <CommercialRow label="Planned Gross Margin" value={fmt(project.plannedGrossMargin)} highlight />
+            </Card>
+
+            {(project.scopeOfWork || project.notes) && (
+              <Card>
+                <h3 className="section-title mb-3">Notes</h3>
+                {project.scopeOfWork && (
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 font-medium mb-1">Scope of Work</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{project.scopeOfWork}</p>
+                  </div>
+                )}
+                {project.notes && (
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium mb-1">Notes</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{project.notes}</p>
+                  </div>
+                )}
+              </Card>
+            )}
+          </div>
         </div>
       )}
 
+      {/* Line Items */}
+      {tab === 'line-items' && <LineItemsTab project={project} />}
+
+      {/* Supplier Bids */}
+      {tab === 'suppliers' && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-title">Supplier Bids</h3>
+            <p className="text-xs text-gray-400">Send the line items to suppliers for pricing</p>
+          </div>
+          {project.rfqs?.length === 0 ? (
+            <div className="text-center py-10">
+              <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="#d1d5db" strokeWidth={1.2} className="mx-auto mb-3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-gray-400 text-sm mb-1">No supplier bids yet</p>
+              <p className="text-xs text-gray-300">Supplier request PDF generation coming soon</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-100">
+                <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <th className="py-2 pr-4">Reference</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Supplier Quotes</th>
+                  <th className="py-2 pr-4">Client Quotes</th>
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.rfqs?.map((rfq: any) => (
+                  <tr key={rfq.id} className="border-b border-gray-50">
+                    <td className="py-2 pr-4 font-mono font-semibold text-brand text-xs">{rfq.referenceNumber}</td>
+                    <td className="py-2 pr-4"><Badge status={rfq.status} /></td>
+                    <td className="py-2 pr-4 text-gray-500">{rfq._count?.supplierQuotes ?? 0}</td>
+                    <td className="py-2 pr-4 text-gray-500">{rfq._count?.clientQuotes ?? 0}</td>
+                    <td className="py-2 pr-4 text-gray-400 text-xs">{new Date(rfq.createdAt).toLocaleDateString('en-ZA')}</td>
+                    <td className="py-2">
+                      <Link href={`/dashboard/rfqs/${rfq.id}`} className="text-brand hover:underline text-xs font-semibold">Open →</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* Tasks */}
+      {tab === 'tasks' && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="section-title">Tasks</h3>
+            {!addingTask && <button className="btn-primary text-xs py-1.5" onClick={() => setAddingTask(true)}>+ Add Task</button>}
+          </div>
+          {tasks.length === 0 && !addingTask ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-sm mb-3">No tasks yet</p>
+              <button className="btn-primary text-xs py-1.5" onClick={() => setAddingTask(true)}>+ Add first task</button>
+            </div>
+          ) : (
+            <>
+              {tasks.map((t: any) => <TaskRow key={t.id} task={t} onStatusChange={handleTaskStatusChange} />)}
+              {addingTask && <AddTaskForm projectId={projectId} onDone={() => { setAddingTask(false); refetchTasks() }} />}
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* Commercial */}
       {tab === 'commercial' && (
         <Card>
           <h3 className="section-title mb-4">Commercial Summary</h3>
@@ -254,78 +495,6 @@ export default function ProjectDetailPage() {
               )}
             </div>
           </div>
-        </Card>
-      )}
-
-      {tab === 'scope' && (
-        <Card>
-          <h3 className="section-title mb-4">Scope of Work</h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Scope of Work', value: project.scopeOfWork, height: 'min-h-24' },
-              { label: 'Deliverables', value: project.deliverables, height: 'min-h-16' },
-              { label: 'Notes', value: project.notes, height: 'min-h-12' },
-            ].map(({ label, value, height }) => (
-              <div key={label}>
-                <label className="label">{label}</label>
-                <div className={clsx('bg-gray-50 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap', height)}>
-                  {value ?? <span className="text-gray-400 italic">Not defined</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {tab === 'tasks' && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="section-title">Tasks</h3>
-            {!addingTask && <button className="btn-primary text-xs py-1.5" onClick={() => setAddingTask(true)}>+ Add Task</button>}
-          </div>
-          {tasks.length === 0 && !addingTask ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400 text-sm mb-3">No tasks yet</p>
-              <button className="btn-primary text-xs py-1.5" onClick={() => setAddingTask(true)}>+ Add first task</button>
-            </div>
-          ) : (
-            <>
-              {tasks.map((t: any) => <TaskRow key={t.id} task={t} onStatusChange={handleTaskStatusChange} />)}
-              {addingTask && <AddTaskForm projectId={projectId} onDone={() => { setAddingTask(false); refetchTasks() }} />}
-            </>
-          )}
-        </Card>
-      )}
-
-      {tab === 'rfqs' && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="section-title">Linked RFQs</h3>
-            <Link href="/dashboard/rfqs/new" className="btn-primary text-xs py-1.5">+ New RFQ</Link>
-          </div>
-          {project.rfqs?.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">No RFQs linked to this project</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100">
-                <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="py-2">Reference</th><th className="py-2">Type</th><th className="py-2">Status</th><th className="py-2">Quotes</th><th className="py-2">Date</th><th className="py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {project.rfqs?.map((rfq: any) => (
-                  <tr key={rfq.id} className="border-b border-gray-50">
-                    <td className="py-2 font-mono font-semibold text-brand">{rfq.referenceNumber}</td>
-                    <td className="py-2 text-gray-500">{rfq.type}</td>
-                    <td className="py-2"><Badge status={rfq.status} /></td>
-                    <td className="py-2 text-gray-500">{rfq._count?.clientQuotes ?? 0}</td>
-                    <td className="py-2 text-gray-400">{new Date(rfq.createdAt).toLocaleDateString('en-ZA')}</td>
-                    <td className="py-2"><Link href={`/dashboard/rfqs/${rfq.id}`} className="text-brand hover:underline text-xs font-semibold">Open →</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </Card>
       )}
     </div>

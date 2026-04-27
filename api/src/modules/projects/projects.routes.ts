@@ -3,6 +3,13 @@ import { z } from 'zod'
 import { ProjectService } from './projects.service'
 import { authenticate } from '../../shared/middleware/auth'
 
+const lineItemSchema = z.object({
+  description: z.string().min(1),
+  qty: z.number().positive(),
+  unit: z.string().min(1),
+  notes: z.string().optional(),
+})
+
 const projectSchema = z.object({
   title: z.string().min(1),
   requestReference: z.string().optional(),
@@ -13,8 +20,9 @@ const projectSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   deadline: z.string().datetime().optional(),
   ownerId: z.string().uuid().optional(),
+  labourRequired: z.boolean().optional(),
+  labourScope: z.string().optional(),
   scopeOfWork: z.string().optional(),
-  deliverables: z.string().optional(),
   notes: z.string().optional(),
   estimatedRevenue: z.number().optional(),
   estimatedMaterial: z.number().optional(),
@@ -23,6 +31,7 @@ const projectSchema = z.object({
   plannedGrossMargin: z.number().optional(),
   actualCost: z.number().optional(),
   actualMargin: z.number().optional(),
+  lineItems: z.array(lineItemSchema).optional(),
 })
 
 const projectRoutes: FastifyPluginAsync = async (app) => {
@@ -58,6 +67,25 @@ const projectRoutes: FastifyPluginAsync = async (app) => {
     const { id } = request.params as { id: string }
     const { status } = z.object({ status: z.string() }).parse(request.body)
     return service.transitionStatus(id, status)
+  })
+
+  // ─── Line Items ───────────────────────────────────────────────────────────
+  app.post('/:id/line-items', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body = lineItemSchema.parse(request.body)
+    return reply.status(201).send(await service.addLineItem(id, body))
+  })
+
+  app.patch('/:id/line-items/:lineId', { preHandler: [authenticate] }, async (request) => {
+    const { lineId } = request.params as { id: string; lineId: string }
+    const body = lineItemSchema.partial().parse(request.body)
+    return service.updateLineItem(lineId, body)
+  })
+
+  app.delete('/:id/line-items/:lineId', { preHandler: [authenticate] }, async (request, reply) => {
+    const { lineId } = request.params as { id: string; lineId: string }
+    await service.deleteLineItem(lineId)
+    return reply.status(204).send()
   })
 
   app.post('/parse-rfq', { preHandler: [authenticate] }, async (request, reply) => {

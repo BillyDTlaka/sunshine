@@ -300,6 +300,45 @@ export class MasterDataService {
     return this.prisma.department.update({ where: { id }, data: { status } })
   }
 
+  // ─── Units ───────────────────────────────────────────────────────────────
+
+  async listUnits({ page = 1, limit = 100, search, status }: ListParams) {
+    const where: any = {}
+    if (search) where.name = { contains: search, mode: 'insensitive' }
+    if (status) where.status = status
+    const [data, total] = await Promise.all([
+      this.prisma.unit.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { name: 'asc' } }),
+      this.prisma.unit.count({ where }),
+    ])
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
+  }
+
+  async getUnit(id: string) {
+    const rec = await this.prisma.unit.findUnique({ where: { id } })
+    if (!rec) throw new NotFoundError('Unit')
+    return rec
+  }
+
+  async createUnit(data: { name: string }) {
+    const exists = await this.prisma.unit.findUnique({ where: { name: data.name } })
+    if (exists) throw new AppError(`Unit '${data.name}' already exists`, 409)
+    return this.prisma.unit.create({ data: { name: data.name } })
+  }
+
+  async updateUnit(id: string, data: { name?: string }) {
+    await this.getUnit(id)
+    if (data.name) {
+      const exists = await this.prisma.unit.findFirst({ where: { name: data.name, NOT: { id } } })
+      if (exists) throw new AppError(`Unit '${data.name}' already exists`, 409)
+    }
+    return this.prisma.unit.update({ where: { id }, data })
+  }
+
+  async setUnitStatus(id: string, status: 'ACTIVE' | 'INACTIVE') {
+    await this.getUnit(id)
+    return this.prisma.unit.update({ where: { id }, data: { status } })
+  }
+
   // ─── Bulk Import ──────────────────────────────────────────────────────────
 
   private getAliases(entity: string): Record<string, string> {

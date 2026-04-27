@@ -77,6 +77,7 @@ export class ProjectService {
         client: true,
         program: { select: { id: true, name: true } },
         owner: { select: { id: true, firstName: true, lastName: true, role: true } },
+        lineItems: { orderBy: { lineNumber: 'asc' } },
         rfqs: {
           include: {
             _count: { select: { clientQuotes: true, supplierQuotes: true } },
@@ -98,6 +99,7 @@ export class ProjectService {
 
   async create(data: any, userId: string) {
     const projectId = await this.generateProjectId()
+    const lineItems: any[] = data.lineItems ?? []
 
     return this.prisma.project.create({
       data: {
@@ -112,8 +114,9 @@ export class ProjectService {
         deadline: data.deadline ? new Date(data.deadline) : undefined,
         ownerId: data.ownerId,
         status: 'NEW_REQUEST',
+        labourRequired: data.labourRequired ?? false,
+        labourScope: data.labourScope,
         scopeOfWork: data.scopeOfWork,
-        deliverables: data.deliverables,
         notes: data.notes,
         estimatedRevenue: data.estimatedRevenue,
         estimatedMaterial: data.estimatedMaterial,
@@ -121,12 +124,37 @@ export class ProjectService {
         markupPct: data.markupPct,
         plannedGrossMargin: data.plannedGrossMargin,
         createdById: userId,
+        lineItems: lineItems.length > 0 ? {
+          create: lineItems.map((li, i) => ({
+            lineNumber: i + 1,
+            description: li.description,
+            qty: li.qty,
+            unit: li.unit,
+            notes: li.notes ?? null,
+          })),
+        } : undefined,
       },
       include: {
         client: { select: { id: true, name: true } },
         owner: { select: { id: true, firstName: true, lastName: true } },
+        lineItems: { orderBy: { lineNumber: 'asc' } },
       },
     })
+  }
+
+  async addLineItem(projectId: string, data: { description: string; qty: number; unit: string; notes?: string }) {
+    const count = await this.prisma.projectLineItem.count({ where: { projectId } })
+    return this.prisma.projectLineItem.create({
+      data: { projectId, lineNumber: count + 1, description: data.description, qty: data.qty, unit: data.unit, notes: data.notes ?? null },
+    })
+  }
+
+  async updateLineItem(lineId: string, data: { description?: string; qty?: number; unit?: string; notes?: string }) {
+    return this.prisma.projectLineItem.update({ where: { id: lineId }, data })
+  }
+
+  async deleteLineItem(lineId: string) {
+    return this.prisma.projectLineItem.delete({ where: { id: lineId } })
   }
 
   async update(id: string, data: any) {
@@ -142,8 +170,9 @@ export class ProjectService {
         priority: data.priority,
         deadline: data.deadline ? new Date(data.deadline) : undefined,
         ownerId: data.ownerId,
+        labourRequired: data.labourRequired,
+        labourScope: data.labourScope,
         scopeOfWork: data.scopeOfWork,
-        deliverables: data.deliverables,
         notes: data.notes,
         estimatedRevenue: data.estimatedRevenue,
         estimatedMaterial: data.estimatedMaterial,
@@ -156,6 +185,7 @@ export class ProjectService {
       include: {
         client: { select: { id: true, name: true } },
         owner: { select: { id: true, firstName: true, lastName: true } },
+        lineItems: { orderBy: { lineNumber: 'asc' } },
       },
     })
   }

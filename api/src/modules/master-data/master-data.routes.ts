@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 import { MasterDataService } from './master-data.service'
 import { authenticate } from '../../shared/middleware/auth'
 
-const ENTITIES = ['customers', 'suppliers', 'materials', 'services', 'employees', 'departments'] as const
+const ENTITIES = ['customers', 'suppliers', 'materials', 'services', 'employees', 'departments', 'units'] as const
 
 const customerSchema = z.object({
   code: z.string().min(1).optional(),
@@ -84,6 +84,10 @@ const departmentSchema = z.object({
   notes: z.string().optional(),
 })
 
+const unitSchema = z.object({
+  name: z.string().min(1),
+})
+
 const schemas: Record<string, z.ZodObject<any>> = {
   customers: customerSchema,
   suppliers: supplierSchema,
@@ -91,6 +95,7 @@ const schemas: Record<string, z.ZodObject<any>> = {
   services: serviceSchema,
   employees: employeeSchema,
   departments: departmentSchema,
+  units: unitSchema,
 }
 
 const masterDataRoutes: FastifyPluginAsync = async (app) => {
@@ -110,6 +115,7 @@ const masterDataRoutes: FastifyPluginAsync = async (app) => {
         case 'services':  return svc.listServices(params)
         case 'employees': return svc.listEmployees(params)
         case 'departments': return svc.listDepartments(params)
+        case 'units': return svc.listUnits(params)
       }
     })
 
@@ -123,6 +129,7 @@ const masterDataRoutes: FastifyPluginAsync = async (app) => {
         case 'services':  return svc.getService(id)
         case 'employees': return svc.getEmployee(id)
         case 'departments': return svc.getDepartment(id)
+        case 'units': return svc.getUnit(id)
       }
     })
 
@@ -137,6 +144,7 @@ const masterDataRoutes: FastifyPluginAsync = async (app) => {
         case 'services':  result = await svc.createService(body); break
         case 'employees': result = await svc.createEmployee(body); break
         case 'departments': result = await svc.createDepartment(body); break
+        case 'units': result = await svc.createUnit(body); break
       }
       return reply.status(201).send(result)
     })
@@ -152,6 +160,7 @@ const masterDataRoutes: FastifyPluginAsync = async (app) => {
         case 'services':  return svc.updateService(id, body)
         case 'employees': return svc.updateEmployee(id, body)
         case 'departments': return svc.updateDepartment(id, body)
+        case 'units': return svc.updateUnit(id, body)
       }
     })
 
@@ -166,6 +175,7 @@ const masterDataRoutes: FastifyPluginAsync = async (app) => {
         case 'services':  return svc.setServiceStatus(id, status)
         case 'employees': return svc.setEmployeeStatus(id, status)
         case 'departments': return svc.setDepartmentStatus(id, status)
+        case 'units': return svc.setUnitStatus(id, status)
       }
     })
 

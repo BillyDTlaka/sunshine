@@ -252,6 +252,31 @@ export const useDeleteTask = () => {
   })
 }
 
+// ─── Project Line Items ───────────────────────────────────────────────────────
+export const useAddLineItem = (projectId: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => projectsApi.addLineItem(projectId, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project', projectId] }),
+  })
+}
+
+export const useUpdateLineItem = (projectId: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ lineId, data }: { lineId: string; data: any }) => projectsApi.updateLineItem(projectId, lineId, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project', projectId] }),
+  })
+}
+
+export const useDeleteLineItem = (projectId: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (lineId: string) => projectsApi.deleteLineItem(projectId, lineId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project', projectId] }),
+  })
+}
+
 // ─── AI Prompts ───────────────────────────────────────────────────────────────
 export const useAiPrompts = () =>
   useQuery({ queryKey: ['ai-prompts'], queryFn: () => aiPromptsApi.list().then(r => r.data) })

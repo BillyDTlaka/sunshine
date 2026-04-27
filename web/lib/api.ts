@@ -130,13 +130,16 @@ export const programsApi = {
 }
 
 export const projectsApi = {
-  list:       (params?: any)             => api.get('/projects', { params }),
-  kanban:     ()                         => api.get('/projects/kanban'),
-  stats:      ()                         => api.get('/projects/stats'),
-  get:        (id: string)               => api.get(`/projects/${id}`),
-  create:     (data: any)                => api.post('/projects', data),
-  update:     (id: string, data: any)    => api.patch(`/projects/${id}`, data),
-  updateStatus: (id: string, status: string) => api.patch(`/projects/${id}/status`, { status }),
+  list:         (params?: any)                => api.get('/projects', { params }),
+  kanban:       ()                            => api.get('/projects/kanban'),
+  stats:        ()                            => api.get('/projects/stats'),
+  get:          (id: string)                  => api.get(`/projects/${id}`),
+  create:       (data: any)                   => api.post('/projects', data),
+  update:       (id: string, data: any)       => api.patch(`/projects/${id}`, data),
+  updateStatus: (id: string, status: string)  => api.patch(`/projects/${id}/status`, { status }),
+  addLineItem:    (id: string, data: any)           => api.post(`/projects/${id}/line-items`, data),
+  updateLineItem: (id: string, lineId: string, data: any) => api.patch(`/projects/${id}/line-items/${lineId}`, data),
+  deleteLineItem: (id: string, lineId: string)      => api.delete(`/projects/${id}/line-items/${lineId}`),
 }
 
 export const tasksApi = {
