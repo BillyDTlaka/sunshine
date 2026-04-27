@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { useAuthStore } from '@/store/auth.store'
@@ -70,16 +71,15 @@ export function Sidebar() {
   return (
     <aside className="w-56 bg-white border-r border-gray-100 flex flex-col h-full">
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-black tracking-tight">LCK</span>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">LCK Projects</p>
-            <p className="text-xs text-gray-400">Commercial Ops</p>
-          </div>
-        </div>
+      <div className="px-4 py-4 border-b border-gray-100">
+        <Image
+          src="/lck-logo.png"
+          alt="LCK Technologies"
+          width={160}
+          height={74}
+          priority
+          className="w-full max-w-[148px] h-auto"
+        />
       </div>
 
       {/* Nav */}
