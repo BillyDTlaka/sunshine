@@ -40,7 +40,7 @@ export class EmailService {
       params.campus ? ['Site / Campus', params.campus] : null,
       params.department ? ['Department', params.department] : null,
       params.deadline ? ['Quote Deadline', `<strong style="color:#c0392b">${params.deadline}</strong>`] : null,
-    ].filter(Boolean).map(([label, value]) =>
+    ].filter((x): x is string[] => x !== null).map(([label, value]) =>
       `<tr><td style="padding:8px 16px;color:#888;font-size:13px;width:140px;white-space:nowrap;">${label}</td><td style="padding:8px 16px;font-size:14px;">${value}</td></tr>`
     ).join('')
 
