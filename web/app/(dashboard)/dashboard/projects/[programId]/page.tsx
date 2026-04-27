@@ -217,7 +217,7 @@ export default function ProgramDetailPage() {
             </p>
             {program.notes && <p className="text-sm text-gray-400 mt-1">{program.notes}</p>}
           </div>
-          <Link href={`/dashboard/projects/${programId}/new`} className="btn-primary">+ New Project</Link>
+          <Link href={`/dashboard/projects/${programId}/new`} className="btn-primary">+ New Quote</Link>
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-100 flex gap-6 text-sm">

@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client'
+import Anthropic from '@anthropic-ai/sdk'
+import { config } from '../../config'
 import { NotFoundError, InvalidTransitionError } from '../../shared/errors/AppError'
+import { AiPromptService } from '../ai-prompts/ai-prompts.service'
 
 const PROJECT_TRANSITIONS: Record<string, string[]> = {
   NEW_REQUEST:    ['ESTIMATING', 'LOST'],
@@ -15,7 +18,12 @@ const PROJECT_TRANSITIONS: Record<string, string[]> = {
 }
 
 export class ProjectService {
-  constructor(private prisma: PrismaClient) {}
+  private anthropic = new Anthropic({ apiKey: config.anthropic.apiKey })
+  private aiPromptService: AiPromptService
+
+  constructor(private prisma: PrismaClient) {
+    this.aiPromptService = new AiPromptService(prisma)
+  }
 
   private async generateProjectId(): Promise<string> {
     const year = new Date().getFullYear()
@@ -183,6 +191,41 @@ export class ProjectService {
       if (board[p.status]) board[p.status].push(p)
     }
     return board
+  }
+
+  async parseRfqDocument(buffer: Buffer, mimeType: string) {
+    const promptRecord = await this.aiPromptService.findByKey('rfq_parse')
+    const promptText = promptRecord.prompt
+
+    let content: Anthropic.MessageParam['content']
+
+    if (mimeType === 'application/pdf') {
+      content = [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: buffer.toString('base64'),
+          },
+        } as any,
+        { type: 'text', text: promptText },
+      ]
+    } else {
+      // Plain text or other formats — read as UTF-8
+      content = [{ type: 'text', text: `${buffer.toString('utf-8')}\n\n${promptText}` }]
+    }
+
+    const response = await this.anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content }],
+    })
+
+    const raw = response.content[0].type === 'text' ? response.content[0].text : ''
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('AI returned no valid JSON')
+    return JSON.parse(jsonMatch[0])
   }
 
   async getStats() {

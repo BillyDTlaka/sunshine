@@ -31,6 +31,7 @@ import projectAdminRoutes from './modules/project-admin/project-admin.routes'
 import projectRoutes from './modules/projects/projects.routes'
 import taskRoutes from './modules/tasks/tasks.routes'
 import programRoutes from './modules/programs/programs.routes'
+import aiPromptRoutes from './modules/ai-prompts/ai-prompts.routes'
 
 export async function buildApp() {
   const app = Fastify({
@@ -75,6 +76,7 @@ export async function buildApp() {
   await app.register(projectRoutes, { prefix: '/projects' })
   await app.register(taskRoutes, { prefix: '/tasks' })
   await app.register(programRoutes, { prefix: '/programs' })
+  await app.register(aiPromptRoutes, { prefix: '/ai-prompts' })
 
   // Global error handler
   app.setErrorHandler((error, _request, reply) => {

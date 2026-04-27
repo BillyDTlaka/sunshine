@@ -147,6 +147,19 @@ export const tasksApi = {
   delete: (id: string)            => api.delete(`/tasks/${id}`),
 }
 
+export const aiPromptsApi = {
+  list:   ()                         => api.get('/ai-prompts'),
+  update: (id: string, data: any)    => api.patch(`/ai-prompts/${id}`, data),
+}
+
+export const parseRfqApi = {
+  parse: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/projects/parse-rfq', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+}
+
 export const dashboardApi = {
   summary: () => api.get('/dashboard/summary'),
   pipeline: () => api.get('/dashboard/pipeline'),

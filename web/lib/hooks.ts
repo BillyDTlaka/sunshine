@@ -3,7 +3,7 @@ import {
   dashboardApi, rfqsApi, clientQuotesApi, supplierQuotesApi,
   approvalsApi, invoicesApi, deliveriesApi, clientsApi, suppliersApi,
   reportsApi, masterDataApi, purchaseOrdersApi, projectAdminApi,
-  projectsApi, tasksApi, programsApi,
+  projectsApi, tasksApi, programsApi, aiPromptsApi, parseRfqApi,
 } from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -251,6 +251,23 @@ export const useDeleteTask = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   })
 }
+
+// ─── AI Prompts ───────────────────────────────────────────────────────────────
+export const useAiPrompts = () =>
+  useQuery({ queryKey: ['ai-prompts'], queryFn: () => aiPromptsApi.list().then(r => r.data) })
+
+export const useUpdateAiPrompt = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => aiPromptsApi.update(id, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ai-prompts'] }),
+  })
+}
+
+export const useParseRfq = () =>
+  useMutation({
+    mutationFn: (file: File) => parseRfqApi.parse(file).then(r => r.data),
+  })
 
 // ─── Project Admin ────────────────────────────────────────────────────────────
 export const useActiveProjects = (params?: any) =>

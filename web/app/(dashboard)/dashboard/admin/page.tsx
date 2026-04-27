@@ -56,6 +56,18 @@ const ADMIN_SECTIONS = [
     color: '#2563EB',
   },
   {
+    title: 'AI Prompts',
+    description: 'Manage the AI prompts used to parse RFQ documents and auto-populate forms',
+    icon: (
+      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+    href: '/dashboard/admin/ai-prompts',
+    items: ['RFQ Document Parser', 'Custom Prompts'],
+    color: '#0891B2',
+  },
+  {
     title: 'Financials',
     description: 'Client invoices, purchase orders and financial records',
     icon: (

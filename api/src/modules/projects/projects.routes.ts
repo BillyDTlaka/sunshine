@@ -59,6 +59,15 @@ const projectRoutes: FastifyPluginAsync = async (app) => {
     const { status } = z.object({ status: z.string() }).parse(request.body)
     return service.transitionStatus(id, status)
   })
+
+  app.post('/parse-rfq', { preHandler: [authenticate] }, async (request, reply) => {
+    const data = await request.file()
+    if (!data) return reply.status(400).send({ error: 'BAD_REQUEST', message: 'No file uploaded' })
+    const buffer = await data.toBuffer()
+    const mimeType = data.mimetype
+    const result = await service.parseRfqDocument(buffer, mimeType)
+    return result
+  })
 }
 
 export default projectRoutes
