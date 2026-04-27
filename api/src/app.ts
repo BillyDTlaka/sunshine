@@ -28,6 +28,8 @@ import reportRoutes from './modules/reports/reports.routes'
 import masterDataRoutes from './modules/master-data/master-data.routes'
 import salesRoutes from './modules/sales/sales.routes'
 import projectAdminRoutes from './modules/project-admin/project-admin.routes'
+import projectRoutes from './modules/projects/projects.routes'
+import taskRoutes from './modules/tasks/tasks.routes'
 
 export async function buildApp() {
   const app = Fastify({
@@ -69,6 +71,8 @@ export async function buildApp() {
   await app.register(masterDataRoutes, { prefix: '/master-data' })
   await app.register(salesRoutes, { prefix: '/sales' })
   await app.register(projectAdminRoutes, { prefix: '/project-admin' })
+  await app.register(projectRoutes, { prefix: '/projects' })
+  await app.register(taskRoutes, { prefix: '/tasks' })
 
   // Global error handler
   app.setErrorHandler((error, _request, reply) => {

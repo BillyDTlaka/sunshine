@@ -3,6 +3,7 @@ import {
   dashboardApi, rfqsApi, clientQuotesApi, supplierQuotesApi,
   approvalsApi, invoicesApi, deliveriesApi, clientsApi, suppliersApi,
   reportsApi, masterDataApi, purchaseOrdersApi, projectAdminApi,
+  projectsApi, tasksApi,
 } from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -147,6 +148,81 @@ export const useImportMasterData = (entity: string) => {
   return useMutation({
     mutationFn: (file: File) => masterDataApi.import(entity, file).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+export const useProjects = (params?: any) =>
+  useQuery({ queryKey: ['projects', params], queryFn: () => projectsApi.list(params).then(r => r.data) })
+
+export const useProjectKanban = () =>
+  useQuery({ queryKey: ['projects', 'kanban'], queryFn: () => projectsApi.kanban().then(r => r.data) })
+
+export const useProjectStats = () =>
+  useQuery({ queryKey: ['projects', 'stats'], queryFn: () => projectsApi.stats().then(r => r.data) })
+
+export const useProject = (id: string) =>
+  useQuery({ queryKey: ['project', id], queryFn: () => projectsApi.get(id).then(r => r.data), enabled: !!id })
+
+export const useCreateProject = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => projectsApi.create(data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  })
+}
+
+export const useUpdateProject = (id: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => projectsApi.update(id, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project', id] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
+  })
+}
+
+export const useUpdateProjectStatus = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => projectsApi.updateStatus(id, status),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['project', id] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+export const useTasks = (params?: any) =>
+  useQuery({ queryKey: ['tasks', params], queryFn: () => tasksApi.list(params).then(r => r.data) })
+
+export const useMyTasks = () =>
+  useQuery({ queryKey: ['tasks', 'mine'], queryFn: () => tasksApi.list({ myTasks: 'true' }).then(r => r.data) })
+
+export const useCreateTask = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => tasksApi.create(data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+export const useUpdateTask = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => tasksApi.update(id, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+}
+
+export const useDeleteTask = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => tasksApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   })
 }
 

@@ -22,7 +22,30 @@ export const COLORS = {
   white: '#FFFFFF',
 }
 
+export const PROJECT_STATUS_ORDER = [
+  'NEW_REQUEST', 'ESTIMATING', 'QUOTED', 'SUBMITTED', 'WON', 'EXECUTING', 'WAITING_CLIENT', 'COMPLETED', 'CLOSED', 'LOST',
+]
+
 export const STATUS_COLORS: Record<string, string> = {
+  // Project statuses
+  NEW_REQUEST:    '#6B7280',
+  ESTIMATING:     '#7C3AED',
+  QUOTED:         '#2563EB',
+  SUBMITTED:      '#D97706',
+  WON:            '#059669',
+  EXECUTING:      '#8B3A3A',
+  WAITING_CLIENT: '#D97706',
+  COMPLETED:      '#059669',
+  // Task statuses
+  TODO:        '#6B7280',
+  IN_PROGRESS: '#2563EB',
+  BLOCKED:     '#DC2626',
+  DONE:        '#059669',
+  // Priority
+  LOW:    '#6B7280',
+  MEDIUM: '#2563EB',
+  HIGH:   '#D97706',
+  URGENT: '#DC2626',
   RFQ_DRAFT: '#6B7280',
   RFQ_OPEN: '#2563EB',
   SUPPLIER_QUOTES_REQUESTED: '#D97706',
@@ -55,6 +78,25 @@ export const STATUS_COLORS: Record<string, string> = {
 }
 
 export const STATUS_LABELS: Record<string, string> = {
+  // Project statuses
+  NEW_REQUEST:    'New Request',
+  ESTIMATING:     'Estimating',
+  QUOTED:         'Quoted',
+  SUBMITTED:      'Submitted',
+  WON:            'Won',
+  EXECUTING:      'Executing',
+  WAITING_CLIENT: 'Waiting Client',
+  COMPLETED:      'Completed',
+  // Task statuses
+  TODO:        'To Do',
+  IN_PROGRESS: 'In Progress',
+  BLOCKED:     'Blocked',
+  DONE:        'Done',
+  // Priority
+  LOW:    'Low',
+  MEDIUM: 'Medium',
+  HIGH:   'High',
+  URGENT: 'Urgent',
   RFQ_DRAFT: 'Draft',
   RFQ_OPEN: 'Open',
   SUPPLIER_QUOTES_REQUESTED: 'Quotes Requested',

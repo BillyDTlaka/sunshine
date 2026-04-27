@@ -4,56 +4,101 @@ export class DashboardService {
   constructor(private prisma: PrismaClient) {}
 
   async getSummary() {
-    const [openRfqs, pendingApprovals, posReceived, deliveriesConfirmed, invoicesOutstanding, totalPipelineValue] = await Promise.all([
-      this.prisma.rfq.count({ where: { status: { notIn: ['CLOSED', 'LOST', 'CANCELLED'] } } }),
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const [
+      newRequests,
+      pendingApprovals,
+      inExecution,
+      lateProjects,
+      monthRevenue,
+      winCount,
+      lostCount,
+      openRfqs,
+      invoicesOutstanding,
+    ] = await Promise.all([
+      this.prisma.project.count({ where: { status: 'NEW_REQUEST' } }),
       this.prisma.approval.count({ where: { decision: 'PENDING' } }),
-      this.prisma.purchaseOrder.count(),
-      this.prisma.delivery.count({ where: { status: 'CONFIRMED' } }),
+      this.prisma.project.count({ where: { status: 'EXECUTING' } }),
+      this.prisma.project.count({
+        where: {
+          deadline: { lt: now },
+          status: { notIn: ['COMPLETED', 'CLOSED', 'LOST'] },
+        },
+      }),
+      this.prisma.project.aggregate({
+        where: {
+          status: { in: ['WON', 'EXECUTING', 'COMPLETED', 'CLOSED'] },
+          createdAt: { gte: startOfMonth },
+        },
+        _sum: { estimatedRevenue: true },
+      }),
+      this.prisma.project.count({ where: { status: { in: ['WON', 'EXECUTING', 'COMPLETED', 'CLOSED'] } } }),
+      this.prisma.project.count({ where: { status: 'LOST' } }),
+      this.prisma.rfq.count({ where: { status: { notIn: ['CLOSED', 'LOST', 'CANCELLED'] } } }),
       this.prisma.clientInvoice.count({ where: { status: { in: ['ISSUED', 'OVERDUE'] } } }),
-      this.prisma.clientQuote.aggregate({ where: { status: 'APPROVED' }, _sum: { totalSell: true } }),
     ])
 
+    const totalDecided = winCount + lostCount
+    const winRate = totalDecided > 0 ? Math.round((winCount / totalDecided) * 100) : 0
+
     return {
-      openRfqs,
+      newRequests,
       pendingApprovals,
-      posReceived,
-      deliveriesConfirmed,
+      inExecution,
+      lateProjects,
+      monthRevenue: monthRevenue._sum.estimatedRevenue ?? 0,
+      winRate,
+      openRfqs,
       invoicesOutstanding,
-      totalPipelineValue: totalPipelineValue._sum.totalSell ?? 0,
     }
   }
 
   async getPipeline() {
-    const statusGroups = await this.prisma.rfq.groupBy({
+    const projects = await this.prisma.project.groupBy({
       by: ['status'],
       _count: { _all: true },
+      where: { status: { notIn: ['CLOSED'] } },
     })
-    return statusGroups.map(g => ({ status: g.status, count: g._count._all }))
+    return projects.map(g => ({ status: g.status, count: g._count._all }))
   }
 
   async getAlerts(userId: string) {
-    const [overdueSupplierQuotes, missingPods, pendingApprovals, overdueInvoices] = await Promise.all([
-      this.prisma.supplierQuote.findMany({
-        where: { status: 'REQUESTED', createdAt: { lt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) } },
-        include: { supplier: true, rfq: true },
-        take: 5,
-      }),
-      this.prisma.delivery.findMany({
-        where: { status: 'DELIVERED', deliveryNote: null },
-        include: { rfq: true },
+    const now = new Date()
+
+    const [myPendingTasks, pendingApprovals, lateProjects, overdueInvoices] = await Promise.all([
+      this.prisma.task.findMany({
+        where: {
+          assigneeId: userId,
+          status: { in: ['TODO', 'IN_PROGRESS', 'BLOCKED'] },
+          dueDate: { lt: now },
+        },
+        include: {
+          project: { select: { id: true, projectId: true, title: true } },
+        },
         take: 5,
       }),
       this.prisma.approval.findMany({
         where: { approverId: userId, decision: 'PENDING' },
         take: 5,
       }),
+      this.prisma.project.findMany({
+        where: {
+          deadline: { lt: now },
+          status: { notIn: ['COMPLETED', 'CLOSED', 'LOST'] },
+        },
+        include: { client: { select: { name: true } } },
+        take: 5,
+        orderBy: { deadline: 'asc' },
+      }),
       this.prisma.clientInvoice.findMany({
-        where: { status: 'ISSUED', dueDate: { lt: new Date() } },
+        where: { status: 'ISSUED', dueDate: { lt: now } },
         include: { client: true },
         take: 5,
       }),
     ])
 
-    return { overdueSupplierQuotes, missingPods, pendingApprovals, overdueInvoices }
+    return { myPendingTasks, pendingApprovals, lateProjects, overdueInvoices }
   }
 }

@@ -122,6 +122,24 @@ export const invoicesApi = {
   markPaid: (rfqId: string, id: string, paidAmount: number) => api.patch(`/rfqs/${rfqId}/client-invoices/${id}/mark-paid`, { paidAmount }),
 }
 
+export const projectsApi = {
+  list:       (params?: any)             => api.get('/projects', { params }),
+  kanban:     ()                         => api.get('/projects/kanban'),
+  stats:      ()                         => api.get('/projects/stats'),
+  get:        (id: string)               => api.get(`/projects/${id}`),
+  create:     (data: any)                => api.post('/projects', data),
+  update:     (id: string, data: any)    => api.patch(`/projects/${id}`, data),
+  updateStatus: (id: string, status: string) => api.patch(`/projects/${id}/status`, { status }),
+}
+
+export const tasksApi = {
+  list:   (params?: any)          => api.get('/tasks', { params }),
+  get:    (id: string)            => api.get(`/tasks/${id}`),
+  create: (data: any)             => api.post('/tasks', data),
+  update: (id: string, data: any) => api.patch(`/tasks/${id}`, data),
+  delete: (id: string)            => api.delete(`/tasks/${id}`),
+}
+
 export const dashboardApi = {
   summary: () => api.get('/dashboard/summary'),
   pipeline: () => api.get('/dashboard/pipeline'),
