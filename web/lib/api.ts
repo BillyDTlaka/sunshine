@@ -122,6 +122,13 @@ export const invoicesApi = {
   markPaid: (rfqId: string, id: string, paidAmount: number) => api.patch(`/rfqs/${rfqId}/client-invoices/${id}/mark-paid`, { paidAmount }),
 }
 
+export const programsApi = {
+  list:   (params?: any)             => api.get('/programs', { params }),
+  get:    (id: string)               => api.get(`/programs/${id}`),
+  create: (data: any)                => api.post('/programs', data),
+  update: (id: string, data: any)    => api.patch(`/programs/${id}`, data),
+}
+
 export const projectsApi = {
   list:       (params?: any)             => api.get('/projects', { params }),
   kanban:     ()                         => api.get('/projects/kanban'),

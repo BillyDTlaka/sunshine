@@ -26,11 +26,12 @@ export class ProjectService {
     return `LCK-${year}-${seq}`
   }
 
-  async findAll({ page = 1, limit = 20, status, clientId, ownerId, search, priority }: any) {
+  async findAll({ page = 1, limit = 20, status, clientId, ownerId, programId, search, priority }: any) {
     const where: any = {}
     if (status) where.status = status
     if (clientId) where.clientId = clientId
     if (ownerId) where.ownerId = ownerId
+    if (programId) where.programId = programId
     if (priority) where.priority = priority
     if (search) {
       where.OR = [
@@ -48,6 +49,7 @@ export class ProjectService {
         include: {
           client: { select: { id: true, name: true } },
           owner: { select: { id: true, firstName: true, lastName: true } },
+          program: { select: { id: true, name: true } },
           _count: { select: { tasks: true, rfqs: true } },
         },
         skip: (page - 1) * limit,
@@ -65,6 +67,7 @@ export class ProjectService {
       where: { id },
       include: {
         client: true,
+        program: { select: { id: true, name: true } },
         owner: { select: { id: true, firstName: true, lastName: true, role: true } },
         rfqs: {
           include: {
@@ -93,6 +96,7 @@ export class ProjectService {
         projectId,
         title: data.title,
         requestReference: data.requestReference,
+        programId: data.programId,
         clientId: data.clientId,
         campus: data.campus,
         department: data.department,

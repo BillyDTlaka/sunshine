@@ -3,7 +3,7 @@ import {
   dashboardApi, rfqsApi, clientQuotesApi, supplierQuotesApi,
   approvalsApi, invoicesApi, deliveriesApi, clientsApi, suppliersApi,
   reportsApi, masterDataApi, purchaseOrdersApi, projectAdminApi,
-  projectsApi, tasksApi,
+  projectsApi, tasksApi, programsApi,
 } from './api'
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -148,6 +148,32 @@ export const useImportMasterData = (entity: string) => {
   return useMutation({
     mutationFn: (file: File) => masterDataApi.import(entity, file).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['master-data', entity] }),
+  })
+}
+
+// ─── Programs ─────────────────────────────────────────────────────────────────
+export const usePrograms = (params?: any) =>
+  useQuery({ queryKey: ['programs', params], queryFn: () => programsApi.list(params).then(r => r.data) })
+
+export const useProgram = (id: string) =>
+  useQuery({ queryKey: ['program', id], queryFn: () => programsApi.get(id).then(r => r.data), enabled: !!id })
+
+export const useCreateProgram = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => programsApi.create(data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['programs'] }),
+  })
+}
+
+export const useUpdateProgram = (id: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: any) => programsApi.update(id, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['program', id] })
+      qc.invalidateQueries({ queryKey: ['programs'] })
+    },
   })
 }
 

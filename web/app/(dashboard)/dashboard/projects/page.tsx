@@ -5,255 +5,249 @@ import Link from 'next/link'
 import { clsx } from 'clsx'
 import { Card } from '@/components/Card'
 import { Badge } from '@/components/Badge'
-import { KpiCard } from '@/components/KpiCard'
-import { useProjects, useProjectKanban, useProjectStats } from '@/lib/hooks'
-import { COLORS, STATUS_LABELS, PROJECT_STATUS_ORDER } from '@/lib/theme'
+import { usePrograms, useCreateProgram, useClients } from '@/lib/hooks'
 
-const PRIORITY_DOT: Record<string, string> = {
-  LOW: 'bg-gray-300',
-  MEDIUM: 'bg-blue-500',
-  HIGH: 'bg-amber-500',
-  URGENT: 'bg-red-500',
-}
+function NewProgramModal({ onClose }: { onClose: () => void }) {
+  const { data: clientsData } = useClients({ limit: 200 })
+  const clients = clientsData?.data ?? []
+  const { mutateAsync: createProgram, isPending } = useCreateProgram()
 
-const KANBAN_COLUMNS = ['NEW_REQUEST', 'ESTIMATING', 'QUOTED', 'SUBMITTED', 'WON', 'EXECUTING', 'WAITING_CLIENT', 'COMPLETED']
+  const [form, setForm] = useState({
+    name: '',
+    clientId: '',
+    contracted: false,
+    startDate: '',
+    endDate: '',
+    notes: '',
+  })
+  const [error, setError] = useState('')
 
-const COLUMN_COLORS: Record<string, string> = {
-  NEW_REQUEST:    'border-gray-300',
-  ESTIMATING:     'border-purple-400',
-  QUOTED:         'border-blue-400',
-  SUBMITTED:      'border-amber-400',
-  WON:            'border-emerald-400',
-  EXECUTING:      'border-brand',
-  WAITING_CLIENT: 'border-orange-400',
-  COMPLETED:      'border-teal-400',
-}
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [field]: e.target.value }))
 
-function PriorityDot({ priority }: { priority: string }) {
-  return <span className={clsx('inline-block w-2 h-2 rounded-full flex-shrink-0', PRIORITY_DOT[priority] ?? 'bg-gray-300')} />
-}
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    try {
+      const payload: any = {
+        name: form.name,
+        clientId: form.clientId,
+        contracted: form.contracted,
+      }
+      if (form.startDate) payload.startDate = new Date(form.startDate).toISOString()
+      if (form.endDate) payload.endDate = new Date(form.endDate).toISOString()
+      if (form.notes) payload.notes = form.notes
+      await createProgram(payload)
+      onClose()
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to create program')
+    }
+  }
 
-function ProjectCard({ project, compact = false }: { project: any; compact?: boolean }) {
-  const isLate = project.deadline && new Date(project.deadline) < new Date() && !['COMPLETED', 'CLOSED', 'LOST'].includes(project.status)
   return (
-    <Link href={`/dashboard/projects/${project.id}`}>
-      <div className={clsx(
-        'bg-white rounded-xl border p-3 hover:shadow-md transition-all cursor-pointer group',
-        isLate ? 'border-red-200 bg-red-50/30' : 'border-gray-100'
-      )}>
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <PriorityDot priority={project.priority} />
-            <span className="font-mono text-xs text-gray-400 flex-shrink-0">{project.projectId}</span>
-          </div>
-          <Badge status={project.status} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">New Program</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
-        <p className="text-sm font-semibold text-gray-900 mb-1 group-hover:text-brand transition-colors line-clamp-2">{project.title}</p>
-        <p className="text-xs text-gray-500 truncate">{project.client?.name}</p>
-        {project.campus && <p className="text-xs text-gray-400 truncate">{project.campus}</p>}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-          <span className="text-xs text-gray-400">
-            {project.owner ? `${project.owner.firstName} ${project.owner.lastName}` : 'Unassigned'}
-          </span>
-          <span className={clsx('text-xs', isLate ? 'text-red-600 font-semibold' : 'text-gray-400')}>
-            {project.deadline ? new Date(project.deadline).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) : '—'}
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <div>
+            <label className="label">Client *</label>
+            <select className="input" required value={form.clientId} onChange={set('clientId')}>
+              <option value="">Select client...</option>
+              {clients.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Program Name *</label>
+            <input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Networking Infrastructure Program" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Start Date</label>
+              <input className="input" type="date" value={form.startDate} onChange={set('startDate')} />
+            </div>
+            <div>
+              <label className="label">End Date</label>
+              <input className="input" type="date" value={form.endDate} onChange={set('endDate')} />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, contracted: !f.contracted }))}
+              className={clsx(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                form.contracted ? 'bg-brand' : 'bg-gray-200'
+              )}
+            >
+              <span className={clsx('inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform', form.contracted ? 'translate-x-6' : 'translate-x-1')} />
+            </button>
+            <span className="text-sm font-medium text-gray-700">Contracted</span>
+          </div>
+          <div>
+            <label className="label">Notes</label>
+            <textarea className="input resize-none" rows={2} value={form.notes} onChange={set('notes')} placeholder="Optional notes..." />
+          </div>
+
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={isPending} className="btn-primary flex-1">
+              {isPending ? 'Creating...' : 'Create Program'}
+            </button>
+            <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ProgramRow({ program }: { program: any }) {
+  const now = new Date()
+  const started = program.startDate && new Date(program.startDate) <= now
+  const ended = program.endDate && new Date(program.endDate) < now
+
+  let statusLabel = 'Upcoming'
+  let statusColor = 'text-gray-500 bg-gray-50'
+  if (ended) { statusLabel = 'Ended'; statusColor = 'text-gray-400 bg-gray-50' }
+  else if (started) { statusLabel = 'Active'; statusColor = 'text-emerald-700 bg-emerald-50' }
+
+  return (
+    <Link href={`/dashboard/projects/${program.id}`}>
+      <div className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer group">
+        {/* Client + Program */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{program.client?.name}</p>
+          <p className="text-sm font-semibold text-gray-900 group-hover:text-brand transition-colors">{program.name}</p>
+        </div>
+
+        {/* Contracted badge */}
+        <div className="flex-shrink-0 w-28 text-center">
+          <span className={clsx(
+            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold',
+            program.contracted ? 'bg-brand/10 text-brand' : 'bg-gray-100 text-gray-500'
+          )}>
+            {program.contracted ? 'Contracted' : 'Not Contracted'}
           </span>
         </div>
-        {!compact && project._count && (
-          <div className="flex gap-3 mt-2 text-xs text-gray-400">
-            <span>{project._count.tasks} tasks</span>
-            <span>{project._count.rfqs} RFQs</span>
-          </div>
-        )}
+
+        {/* Status */}
+        <div className="flex-shrink-0 w-24 text-center">
+          <span className={clsx('text-xs font-semibold px-2 py-0.5 rounded-full', statusColor)}>
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Dates */}
+        <div className="flex-shrink-0 w-48 text-right">
+          <p className="text-xs text-gray-500">
+            {program.startDate ? new Date(program.startDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+            {' → '}
+            {program.endDate ? new Date(program.endDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Ongoing'}
+          </p>
+        </div>
+
+        {/* Project count */}
+        <div className="flex-shrink-0 w-20 text-right">
+          <span className="text-sm font-bold text-gray-700">{program._count?.projects ?? 0}</span>
+          <span className="text-xs text-gray-400 ml-1">projects</span>
+        </div>
+
+        <span className="text-gray-300 group-hover:text-brand transition-colors flex-shrink-0">→</span>
       </div>
     </Link>
   )
 }
 
-function KanbanView() {
-  const { data: board, isLoading } = useProjectKanban()
-
-  if (isLoading) return <div className="animate-pulse text-gray-400 py-8 text-center">Loading board...</div>
-
-  return (
-    <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: 480 }}>
-      {KANBAN_COLUMNS.map(col => {
-        const cards: any[] = board?.[col] ?? []
-        return (
-          <div key={col} className="flex-shrink-0 w-64">
-            <div className={clsx('rounded-t-lg border-t-2 px-3 py-2 bg-white border-x border-b border-gray-100 mb-2', COLUMN_COLORS[col])}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  {STATUS_LABELS[col] ?? col}
-                </span>
-                <span className="text-xs font-bold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{cards.length}</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {cards.map(p => <ProjectCard key={p.id} project={p} compact />)}
-              {cards.length === 0 && (
-                <div className="text-xs text-gray-300 text-center py-4">Empty</div>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function TableView() {
+export default function ProgramsPage() {
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
-  const [priority, setPriority] = useState('')
-  const [page, setPage] = useState(1)
+  const [showNew, setShowNew] = useState(false)
+  const { data: programs, isLoading } = usePrograms(search ? { search } : undefined)
 
-  const { data, isLoading } = useProjects({ search: search || undefined, status: status || undefined, priority: priority || undefined, page, limit: 25 })
+  const grouped = (programs ?? []).reduce((acc: Record<string, any[]>, p: any) => {
+    const key = p.client?.name ?? 'Unknown'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(p)
+    return acc
+  }, {})
 
-  return (
-    <div className="space-y-3">
-      {/* Filters */}
-      <Card className="flex flex-wrap gap-3">
-        <input
-          className="input w-64"
-          placeholder="Search projects..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
-        />
-        <select className="input w-44" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}>
-          <option value="">All Statuses</option>
-          {PROJECT_STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
-        </select>
-        <select className="input w-36" value={priority} onChange={e => { setPriority(e.target.value); setPage(1) }}>
-          <option value="">All Priorities</option>
-          {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-      </Card>
-
-      <Card padding={false}>
-        {isLoading ? (
-          <div className="p-8 text-center text-gray-400">Loading...</div>
-        ) : (
-          <>
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100">
-                <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="px-4 py-3">Project</th>
-                  <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Owner</th>
-                  <th className="px-4 py-3">Priority</th>
-                  <th className="px-4 py-3">Deadline</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Tasks</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {data?.data?.map((p: any) => {
-                  const isLate = p.deadline && new Date(p.deadline) < new Date() && !['COMPLETED', 'CLOSED', 'LOST'].includes(p.status)
-                  return (
-                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <PriorityDot priority={p.priority} />
-                          <div>
-                            <p className="font-semibold text-gray-900 text-sm">{p.title}</p>
-                            <p className="font-mono text-xs text-gray-400">{p.projectId}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">{p.client?.name}</td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">
-                        {p.owner ? `${p.owner.firstName} ${p.owner.lastName}` : <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={clsx('text-xs font-semibold', {
-                          'text-gray-400': p.priority === 'LOW',
-                          'text-blue-600': p.priority === 'MEDIUM',
-                          'text-amber-600': p.priority === 'HIGH',
-                          'text-red-600': p.priority === 'URGENT',
-                        })}>
-                          {p.priority}
-                        </span>
-                      </td>
-                      <td className={clsx('px-4 py-3 text-sm font-medium', isLate ? 'text-red-600' : 'text-gray-500')}>
-                        {p.deadline ? new Date(p.deadline).toLocaleDateString('en-ZA') : '—'}
-                      </td>
-                      <td className="px-4 py-3"><Badge status={p.status} /></td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{p._count?.tasks ?? 0} tasks</td>
-                      <td className="px-4 py-3">
-                        <Link href={`/dashboard/projects/${p.id}`} className="text-brand hover:underline text-xs font-semibold">
-                          Open →
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {data?.data?.length === 0 && (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No projects found</td></tr>
-                )}
-              </tbody>
-            </table>
-            {data && data.totalPages > 1 && (
-              <div className="flex justify-between items-center px-4 py-3 border-t border-gray-100 text-sm">
-                <span className="text-gray-500">Page {data.page} of {data.totalPages} ({data.total} total)</span>
-                <div className="flex gap-2">
-                  <button className="btn-secondary py-1 px-3 text-xs disabled:opacity-40" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button>
-                  <button className="btn-secondary py-1 px-3 text-xs disabled:opacity-40" disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </Card>
-    </div>
-  )
-}
-
-export default function ProjectsPage() {
-  const [view, setView] = useState<'kanban' | 'table'>('kanban')
-  const { data: stats } = useProjectStats()
+  const totalProjects = (programs ?? []).reduce((sum: number, p: any) => sum + (p._count?.projects ?? 0), 0)
 
   return (
     <div className="space-y-5">
+      {showNew && <NewProgramModal onClose={() => setShowNew(false)} />}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Projects</h1>
-          <p className="text-sm text-gray-500 mt-0.5">All client requests and commercial projects</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {(programs ?? []).length} programs · {totalProjects} projects
+          </p>
         </div>
-        <Link href="/dashboard/projects/new" className="btn-primary">+ New Project</Link>
+        <button className="btn-primary" onClick={() => setShowNew(true)}>+ New Program</button>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard label="New Requests" value={stats.byStatus?.find((s: any) => s.status === 'NEW_REQUEST')?._count ?? stats.byStatus?.find((s: any) => s.status === 'NEW_REQUEST')?.count ?? 0} icon="📥" color={COLORS.gray500} />
-          <KpiCard label="In Execution" value={stats.byStatus?.find((s: any) => s.status === 'EXECUTING')?.count ?? 0} icon="⚙️" color={COLORS.brand} />
-          <KpiCard label="Late Projects" value={stats.overdue ?? 0} icon="⚠️" color={COLORS.danger} />
-          <KpiCard label="Est. Revenue" value={`R ${Number(stats.totalRevenue ?? 0).toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`} icon="💰" color={COLORS.success} />
+      {/* Search */}
+      <div className="flex gap-3">
+        <input
+          className="input w-72"
+          placeholder="Search programs or clients..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Programs list */}
+      {isLoading ? (
+        <div className="animate-pulse text-gray-400 text-center py-16">Loading programs...</div>
+      ) : Object.keys(grouped).length === 0 ? (
+        <Card>
+          <div className="text-center py-16">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#9CA3AF" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+              </svg>
+            </div>
+            <p className="text-gray-700 font-semibold mb-1">No programs yet</p>
+            <p className="text-gray-400 text-sm mb-4">Create a program to start grouping projects by client and contract</p>
+            <button className="btn-primary" onClick={() => setShowNew(true)}>+ New Program</button>
+          </div>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(grouped).map(([clientName, clientPrograms]) => (
+            <Card key={clientName} padding={false}>
+              {/* Client header */}
+              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 rounded-t-2xl">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-brand/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-brand text-xs font-bold">{clientName[0]}</span>
+                  </div>
+                  <h2 className="text-sm font-bold text-gray-800">{clientName}</h2>
+                  <span className="text-xs text-gray-400 ml-1">{clientPrograms.length} {clientPrograms.length === 1 ? 'program' : 'programs'}</span>
+                </div>
+              </div>
+
+              {/* Column headers */}
+              <div className="flex items-center gap-4 px-5 py-2 border-b border-gray-100">
+                <div className="flex-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Program</div>
+                <div className="flex-shrink-0 w-28 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Contract</div>
+                <div className="flex-shrink-0 w-24 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</div>
+                <div className="flex-shrink-0 w-48 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">Duration</div>
+                <div className="flex-shrink-0 w-20 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">Projects</div>
+                <div className="flex-shrink-0 w-4" />
+              </div>
+
+              {clientPrograms.map(p => <ProgramRow key={p.id} program={p} />)}
+            </Card>
+          ))}
         </div>
       )}
-
-      {/* View toggle */}
-      <div className="flex items-center gap-2">
-        <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
-          <button
-            className={clsx('px-3 py-1.5 rounded-md text-xs font-semibold transition-colors', view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-            onClick={() => setView('kanban')}
-          >
-            Kanban
-          </button>
-          <button
-            className={clsx('px-3 py-1.5 rounded-md text-xs font-semibold transition-colors', view === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-            onClick={() => setView('table')}
-          >
-            Table
-          </button>
-        </div>
-      </div>
-
-      {view === 'kanban' ? <KanbanView /> : <TableView />}
     </div>
   )
 }

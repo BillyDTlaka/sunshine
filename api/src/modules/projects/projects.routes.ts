@@ -6,6 +6,7 @@ import { authenticate } from '../../shared/middleware/auth'
 const projectSchema = z.object({
   title: z.string().min(1),
   requestReference: z.string().optional(),
+  programId: z.string().uuid().optional(),
   clientId: z.string().uuid(),
   campus: z.string().optional(),
   department: z.string().optional(),
@@ -28,8 +29,8 @@ const projectRoutes: FastifyPluginAsync = async (app) => {
   const service = new ProjectService(app.prisma)
 
   app.get('/', { preHandler: [authenticate] }, async (request) => {
-    const { page = '1', limit = '20', status, clientId, ownerId, search, priority } = request.query as any
-    return service.findAll({ page: parseInt(page), limit: parseInt(limit), status, clientId, ownerId, search, priority })
+    const { page = '1', limit = '20', status, clientId, ownerId, programId, search, priority } = request.query as any
+    return service.findAll({ page: parseInt(page), limit: parseInt(limit), status, clientId, ownerId, programId, search, priority })
   })
 
   app.get('/kanban', { preHandler: [authenticate] }, async () => service.getKanban())

@@ -259,6 +259,7 @@ model Client {
   contacts       Contact[]
   rfqs           Rfq[]
   projects       Project[]
+  programs       Program[]
   clientInvoices ClientInvoice[]
   purchaseOrders PurchaseOrder[]
 }
@@ -682,13 +683,31 @@ model AuditLog {
   createdAt  DateTime @default(now())
 }
 
-// ─── Project & Tasks ──────────────────────────────────────────────────────────
+// ─── Programs & Projects ──────────────────────────────────────────────────────
+
+model Program {
+  id         String    @id @default(uuid())
+  name       String
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id])
+  contracted Boolean   @default(false)
+  startDate  DateTime?
+  endDate    DateTime?
+  notes      String?
+  createdById String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  projects Project[]
+}
 
 model Project {
   id               String        @id @default(uuid())
   projectId        String        @unique
   requestReference String?
   title            String
+  programId        String?
+  program          Program?      @relation(fields: [programId], references: [id])
   clientId         String
   client           Client        @relation(fields: [clientId], references: [id])
   campus           String?
