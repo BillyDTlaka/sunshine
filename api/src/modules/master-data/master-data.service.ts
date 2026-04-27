@@ -319,19 +319,19 @@ export class MasterDataService {
     return rec
   }
 
-  async createUnit(data: { name: string }) {
+  async createUnit(data: any) {
     const exists = await this.prisma.unit.findUnique({ where: { name: data.name } })
     if (exists) throw new AppError(`Unit '${data.name}' already exists`, 409)
     return this.prisma.unit.create({ data: { name: data.name } })
   }
 
-  async updateUnit(id: string, data: { name?: string }) {
+  async updateUnit(id: string, data: any) {
     await this.getUnit(id)
     if (data.name) {
       const exists = await this.prisma.unit.findFirst({ where: { name: data.name, NOT: { id } } })
       if (exists) throw new AppError(`Unit '${data.name}' already exists`, 409)
     }
-    return this.prisma.unit.update({ where: { id }, data })
+    return this.prisma.unit.update({ where: { id }, data: { name: data.name } })
   }
 
   async setUnitStatus(id: string, status: 'ACTIVE' | 'INACTIVE') {
