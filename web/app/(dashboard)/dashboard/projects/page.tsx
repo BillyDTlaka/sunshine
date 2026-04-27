@@ -168,7 +168,7 @@ export default function ProgramsPage() {
   const [showNew, setShowNew] = useState(false)
   const { data: programs, isLoading } = usePrograms(search ? { search } : undefined)
 
-  const grouped = (programs ?? []).reduce((acc: Record<string, any[]>, p: any) => {
+  const grouped = (programs ?? []).reduce<Record<string, any[]>>((acc, p: any) => {
     const key = p.client?.name ?? 'Unknown'
     if (!acc[key]) acc[key] = []
     acc[key].push(p)
